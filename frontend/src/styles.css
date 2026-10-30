@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --dark-walnut: #582f0eff;
+  --saddle-brown: #7f4f24ff;
+  --toffee-brown: #936639ff;
+  --camel: #a68a64ff;
+  --khaki-beige: #b6ad90ff;
+  --dry-sage: #c2c5aaff;
+  --dry-sage-2: #a4ac86ff;
+  --dusty-olive: #656d4aff;
+  --ebony: #414833ff;
+  --charcoal-brown: #333d29ff;
+}
+
+@layer base {
+  html {
+    /* Relative root size so user font-size preferences are respected (WCAG 1.4.4) */
+    font-size: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+  }
+
+  /* Visible focus for keyboard navigation (WCAG 2.4.7) */
+  :focus-visible {
+    outline: 2px solid theme('colors.primary.500');
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+
+  /* El autofill del navegador pinta el fondo blanco/azulado: forzamos los
+     colores del tema con el truco del box-shadow interior */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px theme('colors.white') inset;
+    -webkit-text-fill-color: theme('colors.slate.900');
+    caret-color: theme('colors.slate.900');
+    transition: background-color 600000s 0s;
+  }
+
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark textarea:-webkit-autofill,
+  .dark select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px theme('colors.slate.900') inset;
+    -webkit-text-fill-color: theme('colors.slate.100');
+    caret-color: theme('colors.slate.100');
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+      transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-400 dark:text-slate-950;
+  }
+
+  .btn-secondary {
+    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-100
+      dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
+      placeholder-slate-400 focus:border-primary-500 focus:ring-1 focus:ring-primary-500
+      dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500;
+  }
+
+  .label {
+    @apply mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white/85 shadow-sm backdrop-blur-sm
+      dark:border-slate-800 dark:bg-slate-900/85;
+  }
+
+  .error-text {
+    @apply mt-1 text-sm text-red-600 dark:text-red-400;
+  }
+
+  /* Patrón decorativo de lomos de libros sobre una balda, en la paleta tierra */
+  .bookshelf-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='160' viewBox='0 0 240 160'%3E%3Cg opacity='0.09'%3E%3Crect x='0' y='120' width='240' height='6' fill='%23582f0e'/%3E%3Crect x='12' y='60' width='14' height='60' fill='%237f4f24'/%3E%3Crect x='28' y='52' width='11' height='68' fill='%23936639'/%3E%3Crect x='41' y='66' width='16' height='54' fill='%23656d4a'/%3E%3Crect x='59' y='57' width='12' height='63' fill='%23a68a64'/%3E%3Crect x='92' y='62' width='13' height='58' fill='%23414833'/%3E%3Crect x='107' y='50' width='10' height='70' fill='%237f4f24'/%3E%3Crect x='119' y='64' width='15' height='56' fill='%23b6ad90'/%3E%3Crect x='158' y='58' width='12' height='62' fill='%23936639'/%3E%3Crect x='172' y='66' width='14' height='54' fill='%23333d29'/%3E%3Crect x='188' y='53' width='11' height='67' fill='%23656d4a'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 240px 160px;
+  }
+
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50
+      focus:rounded-lg focus:bg-primary-600 focus:px-4 focus:py-2 focus:text-white;
+  }
+}

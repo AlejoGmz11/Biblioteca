@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mylibrary-postgres
+    environment:
+      POSTGRES_DB: mylibrary
+      POSTGRES_USER: mylibrary
+      POSTGRES_PASSWORD: mylibrary
+    # 5433 en el host: el 5432 lo ocupa la instalación nativa de PostgreSQL
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mylibrary -d mylibrary"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Almacenamiento S3-compatible para los ebooks en desarrollo.
+  # API en :9000, consola web en :9001 (usuario/contraseña: mylibrary / mylibrary123)
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: mylibrary-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: mylibrary
+      MINIO_ROOT_PASSWORD: mylibrary123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Servidor SMTP de pruebas: captura los emails (recuperación de contraseña) sin enviarlos.
+  # SMTP en :1025, bandeja web en http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mylibrary-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  pgdata:
+  miniodata:

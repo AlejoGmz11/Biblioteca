@@ -1,0 +1,56 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.csr.html",
+          "/index.html",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)",
+          "/assets/pdfjs/*.mjs"
+        ]
+      }
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "api-catalog",
+      "urls": [
+        "/api/books",
+        "/api/books?**",
+        "/api/books/*",
+        "/api/categories",
+        "/api/sagas",
+        "/api/stats/**",
+        "http://localhost:8080/api/books",
+        "http://localhost:8080/api/books?**",
+        "http://localhost:8080/api/books/*",
+        "http://localhost:8080/api/categories",
+        "http://localhost:8080/api/sagas",
+        "http://localhost:8080/api/stats/**"
+      ],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "maxSize": 200,
+        "maxAge": "7d",
+        "timeout": "5s"
+      }
+    }
+  ]
+}

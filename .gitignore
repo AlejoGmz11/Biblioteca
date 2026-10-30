@@ -1,0 +1,20 @@
+# Java / Maven
+backend/target/
+*.class
+*.jar
+!backend/.mvn/wrapper/maven-wrapper.jar
+
+# Node / Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+npm-debug.log*
+
+# Uploads
+backend/uploads/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
