@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { IconComponent } from './icon.component';
+
+type StatColor = 'primary' | 'olive' | 'sage' | 'muted';
 
 @Component({
   selector: 'app-stat-card',
@@ -17,7 +19,7 @@ import { IconComponent } from './icon.component';
         </div>
         @if (icon()) {
           <span
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300"
+            [class]="iconClass()"
             aria-hidden="true"
           >
             <app-icon [name]="icon()" [size]="22" />
@@ -31,6 +33,17 @@ export class StatCardComponent {
   readonly label = input.required<string>();
   readonly value = input.required<string | number>();
   readonly hint = input<string>('');
-  /** Nombre de icono de IconComponent (p. ej. 'books', 'book-open'). */
   readonly icon = input<string>('');
+  readonly color = input<StatColor>('primary');
+
+  protected readonly iconClass = computed(() => {
+    const base = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ';
+    const classes: Record<StatColor, string> = {
+      primary: 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300',
+      olive:   'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+      sage:    'bg-slate-50 text-slate-600 dark:bg-slate-900/60 dark:text-slate-400',
+      muted:   'bg-primary-50 text-primary-500 dark:bg-primary-950/50 dark:text-primary-400',
+    };
+    return base + classes[this.color()];
+  });
 }
