@@ -96,9 +96,22 @@ export class AuthService {
       return null;
     }
     try {
-      return JSON.parse(raw) as User;
+      const user = JSON.parse(raw) as User;
+      // Validate minimum shape; clears stale sessions from old formats
+      if (!user?.id || !user?.username) {
+        this.clearStorage();
+        return null;
+      }
+      return user;
     } catch {
+      this.clearStorage();
       return null;
     }
+  }
+
+  private clearStorage(): void {
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem(USER_KEY);
   }
 }

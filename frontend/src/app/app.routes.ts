@@ -81,5 +81,5 @@ export const routes: Routes = [
     loadComponent: () => import('./features/export/export.page').then((m) => m.ExportPage),
     title: 'Exportar datos — MyLibrary'
   },
-  { path: '**', redirectTo: 'dashboard' }
+  { path: '**', redirectTo: '' }
 ];
