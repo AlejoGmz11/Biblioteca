@@ -30,6 +30,9 @@ public class User {
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
+    @Column(name = "reading_goal")
+    private Integer readingGoal;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

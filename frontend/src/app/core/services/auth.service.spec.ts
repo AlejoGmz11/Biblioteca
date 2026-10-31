@@ -18,6 +18,7 @@ describe('AuthService', () => {
       username: 'ana',
       email: 'ana@test.com',
       avatarUrl: null,
+      readingGoal: null,
       createdAt: '2026-01-01T00:00:00'
     }
   };

@@ -66,6 +66,19 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
               <label class="label" for="profile-avatar">URL del avatar</label>
               <input id="profile-avatar" type="url" class="input" formControlName="avatarUrl" placeholder="https://…" />
             </div>
+            <div>
+              <label class="label" for="reading-goal">Meta de lectura anual</label>
+              <input
+                id="reading-goal"
+                type="number"
+                class="input"
+                formControlName="readingGoal"
+                min="1"
+                max="365"
+                placeholder="Ej: 24 libros por año"
+              />
+              <p class="mt-1 text-xs text-slate-400">Cuántos libros querés terminar este año. Se muestra en el panel.</p>
+            </div>
             <button type="submit" class="btn-primary" [disabled]="saving() || form.invalid">
               {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
             </button>
@@ -167,7 +180,8 @@ export class ProfilePage {
   protected readonly form = this.fb.group({
     username: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(3)]),
     email: this.fb.nonNullable.control('', [Validators.required, Validators.email]),
-    avatarUrl: this.fb.control<string | null>(null)
+    avatarUrl: this.fb.control<string | null>(null),
+    readingGoal: this.fb.control<number | null>(null, [Validators.min(1), Validators.max(365)])
   });
 
   protected readonly passwordForm = this.fb.nonNullable.group(
@@ -186,7 +200,8 @@ export class ProfilePage {
       this.form.patchValue({
         username: user.username,
         email: user.email,
-        avatarUrl: user.avatarUrl
+        avatarUrl: user.avatarUrl,
+        readingGoal: user.readingGoal ?? null
       });
     }
   }

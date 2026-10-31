@@ -13,6 +13,8 @@ public record UpdateProfileRequest(
         String email,
 
         @Size(max = 500)
-        String avatarUrl
+        String avatarUrl,
+
+        Integer readingGoal
 ) {
 }

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { DarkModeToggleComponent } from './dark-mode-toggle.component';
 import { IconComponent } from './icon.component';
@@ -30,6 +30,27 @@ import { ClickOutsideDirective } from '../directives/click-outside.directive';
             </a>
           }
         </nav>
+
+        <!-- Búsqueda global -->
+        <form
+          role="search"
+          class="hidden flex-1 md:flex md:max-w-xs"
+          (submit)="search($event)"
+        >
+          <div class="relative w-full">
+            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400" aria-hidden="true">
+              <app-icon name="search" [size]="16" />
+            </span>
+            <input
+              #searchInput
+              type="search"
+              name="q"
+              class="input w-full py-1.5 pl-9 pr-3 text-sm"
+              placeholder="Buscar libro…"
+              aria-label="Buscar en mis libros"
+            />
+          </div>
+        </form>
 
         <div class="flex items-center gap-2">
           <app-dark-mode-toggle />
@@ -117,6 +138,7 @@ import { ClickOutsideDirective } from '../directives/click-outside.directive';
 })
 export class NavbarComponent {
   protected readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   protected readonly menuOpen = signal(false);
   protected readonly mobileOpen = signal(false);
@@ -133,5 +155,15 @@ export class NavbarComponent {
 
   toggleMobile(): void {
     this.mobileOpen.update((open) => !open);
+  }
+
+  search(event: Event): void {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement;
+    const q = (form.elements.namedItem('q') as HTMLInputElement)?.value.trim();
+    if (q) {
+      void this.router.navigate(['/books'], { queryParams: { search: q } });
+      form.reset();
+    }
   }
 }

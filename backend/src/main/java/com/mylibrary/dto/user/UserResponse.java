@@ -10,6 +10,7 @@ public record UserResponse(
         String username,
         String email,
         String avatarUrl,
+        Integer readingGoal,
         LocalDateTime createdAt
 ) {
 }
