@@ -11,7 +11,11 @@ const emptyStats: Stats = {
   booksByStatus: { PENDING: 0, READING: 0, FINISHED: 0 },
   totalPagesRead: 0,
   booksPerMonth: [],
-  avgDaysPerBook: 0
+  pagesPerMonth: [],
+  avgDaysPerBook: 0,
+  ratingDistribution: {},
+  activityDays: [],
+  booksFinishedThisYear: 0
 };
 
 describe('DashboardPage', () => {

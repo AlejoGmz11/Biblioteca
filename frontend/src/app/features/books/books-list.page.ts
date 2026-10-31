@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { Book, BookFilters, Category, PageResponse, Saga } from '../../core/models';
 import { BookService } from '../../core/services/book.service';
 import { CategoryService } from '../../core/services/category.service';
@@ -139,6 +139,9 @@ export class BooksListPage {
     });
     this.categoryService.list().subscribe((categories) => this.categories.set(categories));
     this.sagaService.list().subscribe((sagas) => this.sagas.set(sagas));
+
+    const searchParam = inject(ActivatedRoute).snapshot.queryParamMap.get('search');
+    if (searchParam) this.filters = { ...this.filters, search: searchParam };
     this.load();
   }
 

@@ -24,6 +24,7 @@ export interface User {
   username: string;
   email: string;
   avatarUrl: string | null;
+  readingGoal: number | null;
   createdAt: string;
 }
 
@@ -110,7 +111,11 @@ export interface Stats {
   booksByStatus: Record<ReadingStatus, number>;
   totalPagesRead: number;
   booksPerMonth: { month: string; count: number }[];
+  pagesPerMonth: { month: string; count: number }[];
   avgDaysPerBook: number;
+  ratingDistribution: Record<string, number>;
+  activityDays: { date: string; count: number }[];
+  booksFinishedThisYear: number;
 }
 
 export interface BookFilters {

@@ -11,10 +11,18 @@ public record StatsResponse(
         Map<String, Long> booksByStatus,
         long totalPagesRead,
         List<MonthCount> booksPerMonth,
-        double avgDaysPerBook
+        List<MonthCount> pagesPerMonth,
+        double avgDaysPerBook,
+        Map<Integer, Long> ratingDistribution,
+        List<DayCount> activityDays,
+        long booksFinishedThisYear
 ) {
 
     @Builder
     public record MonthCount(String month, long count) {
+    }
+
+    @Builder
+    public record DayCount(String date, long count) {
     }
 }

@@ -15,7 +15,11 @@ public interface ReadingSessionRepository extends JpaRepository<ReadingSession, 
 
     long countByUserIdAndStatus(Long userId, ReadingStatus status);
 
-    List<ReadingSession> findAllByUserIdAndStatus(Long userId, ReadingStatus status);
+    @Query("""
+            SELECT s FROM ReadingSession s JOIN FETCH s.book
+            WHERE s.user.id = :userId AND s.status = :status
+            """)
+    List<ReadingSession> findAllByUserIdAndStatus(@Param("userId") Long userId, @Param("status") ReadingStatus status);
 
     @Query("""
             SELECT COALESCE(SUM(b.pages), 0) FROM ReadingSession s JOIN s.book b

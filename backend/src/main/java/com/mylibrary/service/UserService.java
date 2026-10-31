@@ -45,6 +45,9 @@ public class UserService {
         if (request.avatarUrl() != null) {
             user.setAvatarUrl(request.avatarUrl());
         }
+        if (request.readingGoal() != null) {
+            user.setReadingGoal(request.readingGoal() > 0 ? request.readingGoal() : null);
+        }
         return userMapper.toResponse(user);
     }
 
