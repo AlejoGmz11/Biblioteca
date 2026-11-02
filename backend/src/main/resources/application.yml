@@ -19,8 +19,8 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET:c2VjcmV0LWtleS1mb3ItbXlsaWJyYXJ5LWRldi1vbmx5LWNoYW5nZS1pbi1wcm9kdWN0aW9uLXBsZWFzZSE=}
-    access-expiration-ms: 900000        # 15 min
-    refresh-expiration-ms: 1800000      # 30 min: sin actividad, la sesión no se puede renovar
+    access-expiration-ms: 86400000      # 24 h
+    refresh-expiration-ms: 604800000   # 7 días
   upload:
     dir: ${UPLOAD_DIR:uploads}
   cors:
