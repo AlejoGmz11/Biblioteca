@@ -6,6 +6,7 @@ import { ApiResponse, Category } from '../models';
 
 export interface CategoryPayload {
   name: string;
+  color?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

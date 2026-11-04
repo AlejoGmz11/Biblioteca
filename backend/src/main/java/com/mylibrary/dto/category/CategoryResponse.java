@@ -6,6 +6,8 @@ import lombok.Builder;
 public record CategoryResponse(
         Long id,
         String name,
-        boolean predefined
+        boolean predefined,
+        String color,
+        long bookCount
 ) {
 }

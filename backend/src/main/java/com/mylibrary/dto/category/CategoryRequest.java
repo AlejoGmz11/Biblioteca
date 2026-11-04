@@ -8,6 +8,9 @@ import lombok.Builder;
 public record CategoryRequest(
         @NotBlank(message = "El nombre es obligatorio")
         @Size(max = 100)
-        String name
+        String name,
+
+        @Size(max = 7)
+        String color
 ) {
 }

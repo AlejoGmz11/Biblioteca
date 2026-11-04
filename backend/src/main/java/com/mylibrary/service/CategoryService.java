@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,8 +27,11 @@ public class CategoryService {
 
     @Transactional(readOnly = true)
     public List<CategoryResponse> list(Long userId) {
+        Map<Long, Long> bookCounts = categoryRepository.countBooksByCategoryForUser(userId)
+                .stream()
+                .collect(Collectors.toMap(r -> (Long) r[0], r -> (Long) r[1]));
         return categoryRepository.findAllVisibleTo(userId).stream()
-                .map(categoryMapper::toResponse)
+                .map(c -> categoryMapper.toResponse(c, bookCounts.getOrDefault(c.getId(), 0L)))
                 .toList();
     }
 
