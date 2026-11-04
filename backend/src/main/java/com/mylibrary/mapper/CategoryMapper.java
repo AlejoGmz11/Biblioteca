@@ -10,7 +10,18 @@ import org.mapstruct.MappingTarget;
 @Mapper
 public interface CategoryMapper {
 
+    @Mapping(target = "bookCount", expression = "java(0L)")
     CategoryResponse toResponse(Category category);
+
+    default CategoryResponse toResponse(Category category, long bookCount) {
+        return CategoryResponse.builder()
+                .id(category.getId())
+                .name(category.getName())
+                .predefined(category.isPredefined())
+                .color(category.getColor())
+                .bookCount(bookCount)
+                .build();
+    }
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "predefined", ignore = true)

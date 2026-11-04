@@ -18,4 +18,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findVisibleById(@Param("id") Long id, @Param("userId") Long userId);
 
     Optional<Category> findByIdAndUserId(Long id, Long userId);
+
+    @Query("SELECT c.id, COUNT(b.id) FROM Book b JOIN b.categories c WHERE b.user.id = :userId GROUP BY c.id")
+    List<Object[]> countBooksByCategoryForUser(@Param("userId") Long userId);
 }

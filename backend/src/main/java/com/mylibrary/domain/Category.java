@@ -23,6 +23,9 @@ public class Category {
     @Builder.Default
     private boolean predefined = false;
 
+    @Column(length = 7)
+    private String color;
+
     /** Null for predefined (global) categories, set for user-created ones. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

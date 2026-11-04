@@ -16,6 +16,25 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
 import { StarRatingComponent } from '../../shared/components/star-rating.component';
 import { IconComponent } from '../../shared/components/icon.component';
 
+type TabId = 'session' | 'notes' | 'info';
+
+const TABS: { value: TabId; label: string; icon: string }[] = [
+  { value: 'session', label: 'Sesión',  icon: 'calendar' },
+  { value: 'notes',   label: 'Notas',   icon: 'pencil' },
+  { value: 'info',    label: 'Info',    icon: 'tag' },
+];
+
+const COVER_GRADIENTS: [string, string][] = [
+  ['#8c6e3f', '#5c3a1a'],
+  ['#4a7c59', '#2d5a3a'],
+  ['#5c6b3a', '#3d4a26'],
+  ['#a0522d', '#7a3a1f'],
+  ['#b08040', '#8c5820'],
+  ['#3d3222', '#1c1510'],
+  ['#7a5e31', '#5a3e18'],
+  ['#8fa882', '#5a7a5a'],
+];
+
 @Component({
   selector: 'app-book-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,142 +52,338 @@ import { IconComponent } from '../../shared/components/icon.component';
   template: `
     @if (book(); as b) {
       <article aria-labelledby="book-title" itemscope itemtype="https://schema.org/Book">
-        <nav aria-label="Miga de pan" class="text-sm text-slate-500">
-          <a routerLink="/books" class="hover:underline">Mis libros</a>
-          <span aria-hidden="true"> / </span>
-          <span aria-current="page">{{ b.title }}</span>
-        </nav>
 
-        <div class="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div>
-            <div class="card overflow-hidden">
+        <!-- ── Breadcrumb + action buttons ── -->
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <nav aria-label="Miga de pan" class="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+            <a routerLink="/books"
+               class="flex items-center gap-1 transition-colors hover:text-primary-600 dark:hover:text-primary-400">
+              <app-icon name="book-open" [size]="14" /> Mis libros
+            </a>
+            <app-icon name="chevron-right" [size]="14" aria-hidden="true" />
+            <span aria-current="page" class="line-clamp-1 max-w-[200px] text-slate-700 dark:text-slate-200">
+              {{ b.title }}
+            </span>
+          </nav>
+          <div class="flex shrink-0 gap-2">
+            <a [routerLink]="['/books', b.id, 'edit']" class="btn-secondary">
+              <app-icon name="pencil" [size]="15" /> Editar
+            </a>
+            <button type="button" class="btn-danger" (click)="deleting.set(true)">
+              <app-icon name="trash" [size]="15" /> Eliminar
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Hero card ── -->
+        <div class="card mb-6 overflow-hidden">
+          <div class="flex gap-0">
+
+            <!-- Cover -->
+            <div class="w-28 shrink-0 sm:w-40 lg:w-48">
               @if (cover(); as url) {
                 <img
                   [src]="url"
                   [alt]="'Portada de ' + b.title + ' de ' + b.author"
                   loading="lazy"
                   itemprop="image"
-                  class="aspect-[2/3] w-full object-cover"
+                  class="h-full w-full object-cover"
                 />
               } @else {
-                <div class="flex aspect-[2/3] items-center justify-center bg-slate-100 text-slate-300 dark:bg-slate-800 dark:text-slate-600" aria-hidden="true">
-                  <app-icon name="book-open" [size]="72" [strokeWidth]="1" />
+                <div
+                  class="flex h-full min-h-[180px] items-center justify-center"
+                  [style.background]="gradient()"
+                  aria-hidden="true"
+                >
+                  <span class="select-none text-6xl font-bold text-white/30">
+                    {{ b.title.charAt(0).toUpperCase() }}
+                  </span>
                 </div>
               }
             </div>
-            @if (b.ebookFormat) {
-              <div class="mt-4 flex gap-2">
-                <a [routerLink]="['/books', b.id, 'read']" class="btn-primary flex-1">
-                  <app-icon name="book-open" [size]="18" /> Leer
-                </a>
-                <button
-                  type="button"
-                  class="btn-secondary flex-1"
-                  (click)="downloadEbook()"
-                  [disabled]="downloading()"
-                >
-                  {{ downloading() ? 'Descargando…' : 'Descargar' }}
-                </button>
+
+            <!-- Info panel -->
+            <div class="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:p-6">
+
+              <!-- Title + author -->
+              <div>
+                <h1
+                  id="book-title"
+                  class="font-serif text-xl font-bold leading-snug sm:text-2xl lg:text-3xl"
+                  itemprop="name"
+                >{{ b.title }}</h1>
+                <p class="mt-0.5 text-base text-slate-500 dark:text-slate-400" itemprop="author">
+                  {{ b.author }}
+                </p>
               </div>
-            }
-            <div class="mt-2 flex gap-2">
-              <a [routerLink]="['/books', b.id, 'edit']" class="btn-secondary flex-1">Editar</a>
-              <button type="button" class="btn-danger flex-1" (click)="deleting.set(true)">Eliminar</button>
+
+              <!-- Badges row -->
+              <div class="flex flex-wrap gap-1.5">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                  [class.bg-slate-200]="statusValue() === 'PENDING'"
+                  [class.text-slate-700]="statusValue() === 'PENDING'"
+                  [class.bg-toffee-brown]="statusValue() === 'READING'"
+                  [class.text-amber-100]="statusValue() === 'READING'"
+                  [class.bg-dusty-olive]="statusValue() === 'FINISHED'"
+                  [class.text-green-100]="statusValue() === 'FINISHED'"
+                >
+                  <span class="h-1.5 w-1.5 rounded-full bg-current opacity-70"></span>
+                  {{ statusValue() | readingStatusLabel }}
+                </span>
+                <span
+                  class="inline-flex items-center rounded-full border border-slate-200 px-2.5 py-0.5
+                         text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300"
+                >{{ b.type | bookTypeLabel }}</span>
+                @if (b.ebookFormat) {
+                  <span
+                    class="inline-flex items-center gap-1 rounded-full border border-primary-200
+                           bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700
+                           dark:border-primary-700/50 dark:bg-primary-900/20 dark:text-primary-300"
+                  >
+                    <app-icon name="document-text" [size]="11" /> {{ b.ebookFormat }}
+                  </span>
+                }
+                @if (b.sagaName) {
+                  <span
+                    class="inline-flex items-center rounded-full border border-slate-200 px-2.5 py-0.5
+                           text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300"
+                  >{{ b.sagaName }}@if (b.sagaOrder) {&nbsp;#{{ b.sagaOrder }}}</span>
+                }
+              </div>
+
+              <!-- Reading progress (READING) -->
+              @if (statusValue() === 'READING' && progressPct() !== null) {
+                <div>
+                  <div class="mb-1 flex items-center justify-between text-xs text-slate-500">
+                    <span>Pág. {{ b.session!.currentPage }} / {{ b.pages }}</span>
+                    <span class="font-semibold text-toffee-brown">{{ progressPct() }}%</span>
+                  </div>
+                  <div class="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                    <div
+                      class="h-full rounded-full bg-toffee-brown transition-all"
+                      [style.width.%]="progressPct()"
+                    ></div>
+                  </div>
+                </div>
+              }
+
+              <!-- Rating display (FINISHED) -->
+              @if (statusValue() === 'FINISHED' && b.session?.rating) {
+                <app-star-rating [rating]="b.session!.rating!" [readonly]="true" />
+              }
+
+              <!-- Description (truncated, desktop only) -->
+              @if (b.description) {
+                <p
+                  class="hidden line-clamp-2 text-sm text-slate-600 dark:text-slate-300 sm:block"
+                  itemprop="description"
+                >{{ b.description }}</p>
+              }
+
+              <!-- CTA buttons -->
+              <div class="mt-auto flex flex-wrap gap-2 pt-1">
+                @if (b.ebookFormat) {
+                  <a [routerLink]="['/books', b.id, 'read']" class="btn-primary">
+                    <app-icon name="book-open" [size]="16" />
+                    {{ statusValue() === 'READING' ? 'Continuar leyendo' : 'Leer' }}
+                  </a>
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    (click)="downloadEbook()"
+                    [disabled]="downloading()"
+                  >
+                    <app-icon name="download" [size]="16" />
+                    {{ downloading() ? 'Descargando…' : 'Descargar' }}
+                  </button>
+                }
+              </div>
             </div>
           </div>
+        </div>
 
-          <div class="lg:col-span-2">
-            <h1 id="book-title" class="text-3xl font-bold" itemprop="name">{{ b.title }}</h1>
-            <p class="mt-1 text-lg text-slate-500 dark:text-slate-400" itemprop="author">{{ b.author }}</p>
+        <!-- ── Tab navigation ── -->
+        <div
+          class="mb-4 flex gap-0.5 rounded-xl border border-slate-200 bg-slate-100/80 p-1
+                 dark:border-slate-700 dark:bg-slate-800/50"
+          role="tablist"
+          aria-label="Secciones del libro"
+        >
+          @for (tab of tabs; track tab.value) {
+            <button
+              type="button"
+              role="tab"
+              [class]="activeTab() === tab.value
+                ? 'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors bg-white shadow-sm text-slate-900 dark:bg-slate-900 dark:text-slate-100'
+                : 'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-slate-500 hover:text-slate-700 dark:text-slate-400'"
+              [attr.aria-selected]="activeTab() === tab.value"
+              (click)="activeTab.set(tab.value)"
+            >
+              <app-icon [name]="tab.icon" [size]="15" />
+              {{ tab.label }}
+            </button>
+          }
+        </div>
 
-            <dl class="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-              <div>
-                <dt class="text-slate-400">Tipo</dt>
-                <dd class="font-medium">{{ b.type | bookTypeLabel }}</dd>
+        <!-- ── Session tab ── -->
+        @if (activeTab() === 'session') {
+          <div class="card p-5 sm:p-6" role="tabpanel" aria-label="Sesión de lectura">
+            @if (b.session; as session) {
+              <div class="space-y-5">
+
+                <!-- Status buttons -->
+                <div>
+                  <p class="label mb-2">Estado de lectura</p>
+                  <div class="flex flex-wrap gap-2" role="group" aria-label="Cambiar estado de lectura">
+                    @for (status of statuses; track status) {
+                      <button
+                        type="button"
+                        class="btn"
+                        [class.bg-primary-600]="session.status === status"
+                        [class.text-white]="session.status === status"
+                        [class.btn-secondary]="session.status !== status"
+                        [attr.aria-pressed]="session.status === status"
+                        (click)="changeStatus(status)"
+                      >{{ status | readingStatusLabel }}</button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Dates + current page -->
+                <div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3" aria-live="polite">
+                  @if (session.startDate) {
+                    <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
+                      <p class="text-xs text-slate-400">Inicio</p>
+                      <p class="mt-0.5 font-semibold">{{ session.startDate | date:'dd MMM yyyy' }}</p>
+                    </div>
+                  }
+                  @if (session.endDate) {
+                    <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
+                      <p class="text-xs text-slate-400">Finalización</p>
+                      <p class="mt-0.5 font-semibold">{{ session.endDate | date:'dd MMM yyyy' }}</p>
+                    </div>
+                  }
+                  @if (session.status === 'READING' && b.pages) {
+                    <div>
+                      <label class="label" for="current-page">Página actual</label>
+                      <input
+                        id="current-page"
+                        type="number"
+                        class="input"
+                        min="0"
+                        [max]="b.pages"
+                        [ngModel]="session.currentPage"
+                        (change)="updateCurrentPage($event)"
+                      />
+                    </div>
+                  }
+                </div>
+
+                <!-- Rating (FINISHED) -->
+                @if (session.status === 'FINISHED') {
+                  <div>
+                    <p class="label">Tu valoración</p>
+                    <app-star-rating [rating]="session.rating ?? 0" (ratingChange)="updateRating($event)" />
+                  </div>
+                }
               </div>
-              @if (b.isbn) {
+            }
+          </div>
+        }
+
+        <!-- ── Notes tab ── -->
+        @if (activeTab() === 'notes') {
+          <div class="card p-5 sm:p-6" role="tabpanel" aria-label="Notas">
+            @if (b.session; as session) {
+              <label class="label" for="notes">Tus notas</label>
+              <textarea
+                id="notes"
+                rows="8"
+                class="input"
+                placeholder="Tus impresiones, citas favoritas, personajes que te gustaron…"
+                [ngModel]="session.notes"
+                (change)="updateNotes($event)"
+              ></textarea>
+            }
+          </div>
+        }
+
+        <!-- ── Info tab ── -->
+        @if (activeTab() === 'info') {
+          <div class="space-y-4" role="tabpanel" aria-label="Información del libro">
+
+            <!-- Metadata card -->
+            <div class="card p-5 sm:p-6">
+              <h2 class="cat-section-label mb-4">Detalles</h2>
+              <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
                 <div>
-                  <dt class="text-slate-400">ISBN</dt>
-                  <dd class="font-medium" itemprop="isbn">{{ b.isbn }}</dd>
+                  <dt class="text-xs text-slate-400">Tipo</dt>
+                  <dd class="mt-0.5 font-medium">{{ b.type | bookTypeLabel }}</dd>
                 </div>
-              }
-              @if (b.pages) {
-                <div>
-                  <dt class="text-slate-400">Páginas</dt>
-                  <dd class="font-medium" itemprop="numberOfPages">{{ b.pages }}</dd>
-                </div>
-              }
-              @if (b.sagaName) {
-                <div>
-                  <dt class="text-slate-400">Saga</dt>
-                  <dd class="font-medium">
-                    {{ b.sagaName }}@if (b.sagaOrder) {&nbsp;(#{{ b.sagaOrder }})}
-                  </dd>
-                </div>
-              }
+                @if (b.isbn) {
+                  <div>
+                    <dt class="text-xs text-slate-400">ISBN</dt>
+                    <dd class="mt-0.5 font-medium" itemprop="isbn">{{ b.isbn }}</dd>
+                  </div>
+                }
+                @if (b.pages) {
+                  <div>
+                    <dt class="text-xs text-slate-400">Páginas</dt>
+                    <dd class="mt-0.5 font-medium" itemprop="numberOfPages">{{ b.pages }}</dd>
+                  </div>
+                }
+                @if (b.sagaName) {
+                  <div>
+                    <dt class="text-xs text-slate-400">Saga</dt>
+                    <dd class="mt-0.5 font-medium">
+                      {{ b.sagaName }}@if (b.sagaOrder) {&nbsp;(#{{ b.sagaOrder }})}
+                    </dd>
+                  </div>
+                }
+              </dl>
+
               @if (b.categories.length) {
-                <div class="col-span-2">
-                  <dt class="text-slate-400">Categorías</dt>
-                  <dd class="mt-1 flex flex-wrap gap-1.5">
+                <div class="mt-4">
+                  <p class="mb-2 text-xs text-slate-400">Categorías</p>
+                  <div class="flex flex-wrap gap-1.5">
                     @for (category of b.categories; track category.id) {
                       <span
-                        class="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/50 dark:text-primary-300"
+                        class="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700
+                               dark:bg-primary-900/50 dark:text-primary-300"
                         itemprop="genre"
-                      >
-                        {{ category.name }}
-                      </span>
+                      >{{ category.name }}</span>
                     }
-                  </dd>
+                  </div>
                 </div>
               }
-            </dl>
 
-            @if (b.description) {
-              <p class="mt-4 text-slate-600 dark:text-slate-300" itemprop="description">{{ b.description }}</p>
-            }
+              @if (b.description) {
+                <div class="mt-4">
+                  <p class="mb-1 text-xs text-slate-400">Descripción</p>
+                  <p class="text-sm text-slate-600 dark:text-slate-300" itemprop="description">
+                    {{ b.description }}
+                  </p>
+                </div>
+              }
+            </div>
 
-            @if (sagaSiblings().length) {
-              <section class="card mt-6 p-6" aria-labelledby="saga-title">
-                <h2 id="saga-title" class="text-lg font-semibold">
-                  Más de «{{ b.sagaName }}»
-                </h2>
-                <ul class="mt-3 space-y-2" role="list">
-                  @for (sibling of sagaSiblings(); track sibling.id) {
-                    <li>
-                      <a
-                        [routerLink]="['/books', sibling.id]"
-                        class="flex items-center gap-2 text-sm text-primary-600 hover:underline dark:text-primary-400"
-                      >
-                        @if (sibling.sagaOrder) {
-                          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-900/50 dark:text-primary-300">
-                            {{ sibling.sagaOrder }}
-                          </span>
-                        }
-                        {{ sibling.title }}
-                      </a>
-                    </li>
-                  }
-                </ul>
-              </section>
-            }
-
-            <section class="card mt-6 p-6" aria-labelledby="ebook-title">
-              <h2 id="ebook-title" class="flex items-center gap-2 text-lg font-semibold">
-                <span class="text-primary-600 dark:text-primary-400" aria-hidden="true">
-                  <app-icon name="document-text" [size]="18" />
-                </span>
-                Archivo del libro
+            <!-- Ebook management card -->
+            <div class="card p-5 sm:p-6">
+              <h2 class="cat-section-label mb-3 flex items-center gap-1.5">
+                <app-icon name="document-text" [size]="12" /> Archivo del libro
               </h2>
-
               @if (b.ebookFormat) {
-                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p class="mb-3 text-sm text-slate-500 dark:text-slate-400">
                   {{ b.ebookFormat }} · {{ formatBytes(b.ebookSize) }}
                 </p>
-                <div class="mt-3 flex flex-wrap gap-2">
+                <div class="flex flex-wrap gap-2">
                   @if (ebookCache.available) {
                     @if (availableOffline()) {
                       <span
-                        class="inline-flex items-center gap-1 rounded-full bg-dry-sage px-3 py-1.5 text-sm font-medium text-charcoal-brown dark:bg-dusty-olive/60 dark:text-dry-sage"
+                        class="inline-flex items-center gap-1 rounded-full bg-dry-sage px-3 py-1.5
+                               text-sm font-medium text-charcoal-brown
+                               dark:bg-dusty-olive/60 dark:text-dry-sage"
                         role="status"
                       >
                         <app-icon name="download" [size]="14" /> Disponible sin conexión
@@ -214,88 +429,61 @@ import { IconComponent } from '../../shared/components/icon.component';
                   </div>
                 }
               } @else {
-                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p class="mb-3 text-sm text-slate-500 dark:text-slate-400">
                   Adjunta el PDF o EPUB para leerlo desde la aplicación y descargarlo cuando quieras.
                 </p>
-                <div class="mt-3">
-                  <app-ebook-uploader [uploadFn]="attachFn" (uploaded)="onEbookUploaded($event)" />
-                </div>
+                <app-ebook-uploader [uploadFn]="attachFn" (uploaded)="onEbookUploaded($event)" />
               }
-            </section>
+            </div>
 
-            <section class="card mt-6 p-6" aria-labelledby="session-title">
-              <h2 id="session-title" class="text-lg font-semibold">Sesión de lectura</h2>
-
-              @if (b.session; as session) {
-                <div class="mt-4 space-y-4">
-                  <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Cambiar estado de lectura">
-                    @for (status of statuses; track status) {
-                      <button
-                        type="button"
-                        class="btn"
-                        [class.bg-primary-600]="session.status === status"
-                        [class.text-white]="session.status === status"
-                        [class.btn-secondary]="session.status !== status"
-                        [attr.aria-pressed]="session.status === status"
-                        (click)="changeStatus(status)"
+            <!-- Saga siblings card -->
+            @if (sagaSiblings().length) {
+              <div class="card p-5 sm:p-6">
+                <h2 class="cat-section-label mb-3">Más de «{{ b.sagaName }}»</h2>
+                <ul class="space-y-1" role="list">
+                  @for (sibling of sagaSiblings(); track sibling.id) {
+                    <li>
+                      <a
+                        [routerLink]="['/books', sibling.id]"
+                        class="flex items-center gap-2 rounded-lg p-2 text-sm text-primary-600
+                               transition-colors hover:bg-primary-50 hover:underline
+                               dark:text-primary-400 dark:hover:bg-primary-900/10"
                       >
-                        {{ status | readingStatusLabel }}
-                      </button>
-                    }
-                  </div>
-
-                  <div class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3" aria-live="polite">
-                    @if (session.startDate) {
-                      <p><span class="text-slate-400">Inicio:</span> {{ session.startDate | date: 'dd/MM/yyyy' }}</p>
-                    }
-                    @if (session.endDate) {
-                      <p><span class="text-slate-400">Fin:</span> {{ session.endDate | date: 'dd/MM/yyyy' }}</p>
-                    }
-                    @if (session.status === 'READING' && b.pages) {
-                      <div>
-                        <label class="label" for="current-page">Página actual</label>
-                        <input
-                          id="current-page"
-                          type="number"
-                          class="input"
-                          min="0"
-                          [max]="b.pages"
-                          [ngModel]="session.currentPage"
-                          (change)="updateCurrentPage($event)"
-                        />
-                      </div>
-                    }
-                  </div>
-
-                  @if (session.status === 'FINISHED') {
-                    <div>
-                      <p class="label">Tu valoración</p>
-                      <app-star-rating
-                        [rating]="session.rating ?? 0"
-                        (ratingChange)="updateRating($event)"
-                      />
-                    </div>
+                        @if (sibling.sagaOrder) {
+                          <span
+                            class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full
+                                   bg-primary-100 text-xs font-semibold text-primary-700
+                                   dark:bg-primary-900/50 dark:text-primary-300"
+                          >{{ sibling.sagaOrder }}</span>
+                        }
+                        {{ sibling.title }}
+                      </a>
+                    </li>
                   }
+                </ul>
+              </div>
+            }
 
-                  <div>
-                    <label class="label" for="notes">Notas</label>
-                    <textarea
-                      id="notes"
-                      rows="4"
-                      class="input"
-                      placeholder="Tus impresiones, citas favoritas…"
-                      [ngModel]="session.notes"
-                      (change)="updateNotes($event)"
-                    ></textarea>
-                  </div>
-                </div>
-              }
-            </section>
+          </div>
+        }
+
+      </article>
+
+    } @else {
+      <!-- Skeleton loading -->
+      <div class="animate-pulse space-y-5">
+        <div class="h-5 w-48 rounded bg-slate-200 dark:bg-slate-700"></div>
+        <div class="card overflow-hidden">
+          <div class="flex">
+            <div class="w-40 bg-slate-200 dark:bg-slate-700" style="aspect-ratio:2/3"></div>
+            <div class="flex flex-1 flex-col gap-3 p-6">
+              <div class="h-7 w-3/4 rounded bg-slate-200 dark:bg-slate-700"></div>
+              <div class="h-5 w-1/2 rounded bg-slate-100 dark:bg-slate-800"></div>
+              <div class="h-4 w-1/3 rounded bg-slate-100 dark:bg-slate-800"></div>
+            </div>
           </div>
         </div>
-      </article>
-    } @else {
-      <p class="text-slate-500" role="status">Cargando libro…</p>
+      </div>
     }
 
     <app-confirm-dialog
@@ -327,13 +515,17 @@ export class BookDetailPage {
   readonly id = input.required<string>();
 
   protected readonly statuses: ReadingStatus[] = ['PENDING', 'READING', 'FINISHED'];
+  protected readonly tabs = TABS;
+
   protected readonly book = signal<Book | null>(null);
   protected readonly sagaSiblings = signal<Book[]>([]);
+  protected readonly activeTab = signal<TabId>('session');
   protected readonly deleting = signal(false);
   protected readonly replacingEbook = signal(false);
   protected readonly removingEbook = signal(false);
   protected readonly downloading = signal(false);
   protected readonly savingOffline = signal(false);
+
   protected readonly availableOffline = computed(() => {
     const b = this.book();
     return !!b && this.ebookCache.cachedIds().has(b.id);
@@ -342,6 +534,21 @@ export class BookDetailPage {
   protected readonly cover = computed(() => {
     const b = this.book();
     return b ? this.bookService.coverUrl(b) : null;
+  });
+  protected readonly statusValue = computed(() => this.book()?.session?.status ?? 'PENDING');
+  protected readonly progressPct = computed((): number | null => {
+    const b = this.book();
+    const cur = b?.session?.currentPage;
+    const total = b?.pages;
+    if (!cur || !total || total <= 0) return null;
+    return Math.min(100, Math.round((cur / total) * 100));
+  });
+  protected readonly gradient = computed((): string => {
+    const title = this.book()?.title ?? '';
+    let hash = 0;
+    for (const ch of title) hash = (hash + ch.charCodeAt(0)) % COVER_GRADIENTS.length;
+    const [from, to] = COVER_GRADIENTS[hash];
+    return `linear-gradient(145deg,${from},${to})`;
   });
 
   /** Sube el archivo al libro actual (lo usa el uploader). */
@@ -354,6 +561,7 @@ export class BookDetailPage {
       this.id();
       this.book.set(null);
       this.sagaSiblings.set([]);
+      this.activeTab.set('session');
       this.deleting.set(false);
       this.replacingEbook.set(false);
       this.removingEbook.set(false);
@@ -510,7 +718,6 @@ export class BookDetailPage {
     });
   }
 
-  /** Otros libros de la misma saga, ordenados por su posición. */
   private loadSagaSiblings(book: Book): void {
     if (!book.sagaId) {
       this.sagaSiblings.set([]);

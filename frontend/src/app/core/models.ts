@@ -38,6 +38,8 @@ export interface Category {
   id: number;
   name: string;
   predefined: boolean;
+  color: string | null;
+  bookCount: number;
 }
 
 export interface Saga {
