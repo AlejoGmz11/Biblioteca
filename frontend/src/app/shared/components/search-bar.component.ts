@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, input, output, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 
@@ -15,10 +15,12 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
       </svg>
       <label class="sr-only" for="search-input">{{ placeholder() }}</label>
       <input
+        #searchInput
         id="search-input"
         type="search"
         class="input pl-9"
         [placeholder]="placeholder()"
+        [value]="initialValue()"
         (input)="onInput($event)"
         (keydown.escape)="clear($event)"
       />
@@ -28,8 +30,10 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 export class SearchBarComponent {
   readonly placeholder = input('Buscar por título, autor o ISBN…');
   readonly debounceMs = input(300);
+  readonly initialValue = input('');
   readonly search = output<string>();
 
+  private readonly inputEl = viewChild<ElementRef<HTMLInputElement>>('searchInput');
   private readonly terms = new Subject<string>();
 
   constructor() {

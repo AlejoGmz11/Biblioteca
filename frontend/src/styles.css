@@ -106,6 +106,20 @@
       focus:rounded-lg focus:bg-primary-600 focus:px-4 focus:py-2 focus:text-white;
   }
 
+  /* ── Books list status chips ── */
+  .status-chip {
+    @apply flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1
+      text-[0.8125rem] font-medium text-slate-500 transition-colors
+      hover:border-primary-400 hover:text-primary-600
+      dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400
+      dark:hover:border-primary-400 dark:hover:text-primary-400;
+  }
+
+  .status-chip.active {
+    @apply border-primary-500 bg-primary-50 text-primary-700
+      dark:border-primary-400 dark:bg-primary-900/20 dark:text-primary-300;
+  }
+
   /* ── Category page utilities ── */
   .stat-pill {
     @apply flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5

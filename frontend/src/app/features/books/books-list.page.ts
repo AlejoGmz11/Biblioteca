@@ -1,6 +1,19 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
 import { RouterLink, ActivatedRoute } from '@angular/router';
-import { Book, BookFilters, Category, PageResponse, Saga } from '../../core/models';
+import {
+  Book,
+  BookFilters,
+  Category,
+  PageResponse,
+  ReadingStatus,
+  Saga
+} from '../../core/models';
 import { BookService } from '../../core/services/book.service';
 import { CategoryService } from '../../core/services/category.service';
 import { SagaService } from '../../core/services/saga.service';
@@ -13,6 +26,15 @@ import { FilterPanelComponent } from '../../shared/components/filter-panel.compo
 import { PaginationComponent } from '../../shared/components/pagination.component';
 import { SearchBarComponent } from '../../shared/components/search-bar.component';
 import { IconComponent } from '../../shared/components/icon.component';
+
+type StatusFilter = ReadingStatus | '';
+
+const STATUS_CHIPS: { label: string; value: StatusFilter; dot: string }[] = [
+  { label: 'Todos',       value: '',         dot: 'bg-slate-400' },
+  { label: 'Pendientes',  value: 'PENDING',  dot: 'bg-slate-500' },
+  { label: 'Leyendo',     value: 'READING',  dot: 'bg-toffee-brown' },
+  { label: 'Terminados',  value: 'FINISHED', dot: 'bg-dusty-olive' },
+];
 
 @Component({
   selector: 'app-books-list-page',
@@ -29,52 +51,132 @@ import { IconComponent } from '../../shared/components/icon.component';
   ],
   template: `
     <section aria-labelledby="books-title">
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <h1 id="books-title" class="text-2xl font-bold">Mis libros</h1>
-        <div class="flex items-center gap-2">
-          <div class="flex rounded-lg border border-slate-300 dark:border-slate-700" role="group" aria-label="Modo de vista">
+
+      <!-- ── Header ── -->
+      <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 id="books-title" class="text-2xl font-bold font-serif">Mis libros</h1>
+          <p class="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            @if (page(); as result) {
+              {{ result.totalElements }} libros en tu biblioteca
+            } @else {
+              &nbsp;
+            }
+          </p>
+        </div>
+        <a routerLink="/books/new" class="btn-primary flex items-center gap-1.5">
+          <app-icon name="plus" [size]="16" />
+          Añadir libro
+        </a>
+      </div>
+
+      <!-- ── Toolbar ── -->
+      <div class="mb-4 flex flex-wrap items-center gap-2">
+
+        <!-- Search -->
+        <div class="flex-1" style="min-width:180px; max-width:300px;">
+          <app-search-bar [initialValue]="initialSearch" (search)="onSearch($event)" />
+        </div>
+
+        <!-- Status chips -->
+        <div class="flex gap-1" role="group" aria-label="Filtrar por estado">
+          @for (chip of STATUS_CHIPS; track chip.value) {
             <button
               type="button"
-              class="rounded-l-lg px-3 py-2 text-sm"
-              [class.bg-primary-600]="view() === 'cards'"
-              [class.text-white]="view() === 'cards'"
-              [attr.aria-pressed]="view() === 'cards'"
-              (click)="view.set('cards')"
+              class="status-chip"
+              [class.active]="activeStatus() === chip.value"
+              (click)="setStatus(chip.value)"
+              [attr.aria-pressed]="activeStatus() === chip.value"
             >
-              Tarjetas
+              <span class="h-1.5 w-1.5 rounded-full" [class]="chip.dot"></span>
+              {{ chip.label }}
             </button>
-            <button
-              type="button"
-              class="rounded-r-lg px-3 py-2 text-sm"
-              [class.bg-primary-600]="view() === 'table'"
-              [class.text-white]="view() === 'table'"
-              [attr.aria-pressed]="view() === 'table'"
-              (click)="view.set('table')"
-            >
-              Tabla
-            </button>
-          </div>
-          <a routerLink="/books/new" class="btn-primary">+ Añadir</a>
+          }
+        </div>
+
+        <!-- Spacer -->
+        <div class="flex-1 hidden sm:block"></div>
+
+        <!-- More filters toggle -->
+        <button
+          type="button"
+          class="filter-btn flex items-center gap-1.5"
+          [class.active]="showFilters()"
+          (click)="showFilters.set(!showFilters())"
+          [attr.aria-expanded]="showFilters()"
+          aria-controls="advanced-filters"
+        >
+          <app-icon name="bars-arrow-down" [size]="14" />
+          Filtros
+          @if (hasAdvancedFilters()) {
+            <span class="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full
+                         bg-primary-500 text-[0.65rem] font-bold text-white">
+              {{ advancedFilterCount() }}
+            </span>
+          }
+        </button>
+
+        <!-- View toggle -->
+        <div
+          class="flex overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700"
+          role="group"
+          aria-label="Modo de vista"
+        >
+          <button
+            type="button"
+            class="px-3 py-1.5 text-sm transition-colors"
+            [class.bg-primary-600]="view() === 'cards'"
+            [class.text-white]="view() === 'cards'"
+            [class.text-slate-500]="view() !== 'cards'"
+            [attr.aria-pressed]="view() === 'cards'"
+            (click)="view.set('cards')"
+            aria-label="Vista tarjetas"
+          ><app-icon name="view-columns" [size]="16" /></button>
+          <button
+            type="button"
+            class="px-3 py-1.5 text-sm transition-colors"
+            [class.bg-primary-600]="view() === 'table'"
+            [class.text-white]="view() === 'table'"
+            [class.text-slate-500]="view() !== 'table'"
+            [attr.aria-pressed]="view() === 'table'"
+            (click)="view.set('table')"
+            aria-label="Vista tabla"
+          ><app-icon name="list" [size]="16" /></button>
         </div>
       </div>
 
-      <div class="mt-4 space-y-4">
-        <app-search-bar (search)="onSearch($event)" />
-        <app-filter-panel [categories]="categories()" [sagas]="sagas()" (filtersChange)="onFilters($event)" />
-      </div>
+      <!-- ── Advanced filters (collapsible) ── -->
+      @if (showFilters()) {
+        <div
+          id="advanced-filters"
+          class="mb-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4
+                 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-800/50"
+        >
+          <app-filter-panel
+            [categories]="categories()"
+            [sagas]="sagas()"
+            (filtersChange)="onAdvancedFilters($event)"
+          />
+        </div>
+      }
 
-      <div class="mt-6" aria-live="polite">
+      <!-- ── Content ── -->
+      <div aria-live="polite">
         @if (page(); as result) {
           @if (result.content.length === 0) {
-            <div class="card p-12 text-center">
-              <span class="inline-flex text-slate-300 dark:text-slate-600" aria-hidden="true">
-                <app-icon name="book-open" [size]="48" [strokeWidth]="1.2" />
+            <div class="card flex flex-col items-center px-6 py-16 text-center">
+              <span class="text-slate-200 dark:text-slate-700" aria-hidden="true">
+                <app-icon name="book-open" [size]="52" [strokeWidth]="1.2" />
               </span>
-              <p class="mt-3 font-medium">No se encontraron libros</p>
-              <p class="mt-1 text-sm text-slate-500">Prueba con otros filtros o añade tu primer libro.</p>
+              <p class="mt-4 font-semibold">No se encontraron libros</p>
+              <p class="mt-1 text-sm text-slate-500">Probá con otros filtros o añadí tu primer libro.</p>
+              <a routerLink="/books/new" class="btn-primary mt-5">Añadir libro</a>
             </div>
           } @else if (view() === 'cards') {
-            <ul class="grid list-none grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" role="list">
+            <ul
+              class="grid list-none grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+              role="list"
+            >
               @for (book of result.content; track book.id) {
                 <li><app-book-card [book]="book" /></li>
               }
@@ -90,19 +192,37 @@ import { IconComponent } from '../../shared/components/icon.component';
               (pageChange)="onPage($event)"
             />
           </div>
+
         } @else if (loadError()) {
           <div class="card p-8 text-center" role="alert">
             <span class="inline-flex text-camel" aria-hidden="true">
               <app-icon name="warning" [size]="32" />
             </span>
-            <p class="mt-2 font-medium">No se pudieron cargar tus libros</p>
+            <p class="mt-2 font-medium">No se pudieron cargar los libros</p>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Comprueba que el servidor esté disponible e inténtalo de nuevo.
+              Verificá que el servidor esté disponible e intentá de nuevo.
             </p>
             <button type="button" class="btn-primary mt-4" (click)="retry()">Reintentar</button>
           </div>
         } @else {
-          <p class="text-slate-500" role="status">Cargando libros…</p>
+          <!-- Skeleton grid -->
+          <ul
+            class="grid list-none grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+            aria-label="Cargando libros…"
+            role="list"
+          >
+            @for (_ of skeletons; track $index) {
+              <li>
+                <div class="card overflow-hidden">
+                  <div class="aspect-[2/3] w-full animate-pulse bg-slate-200 dark:bg-slate-700"></div>
+                  <div class="space-y-2 p-3">
+                    <div class="h-3 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-700"></div>
+                    <div class="h-3 w-1/2 animate-pulse rounded bg-slate-100 dark:bg-slate-800"></div>
+                  </div>
+                </div>
+              </li>
+            }
+          </ul>
         }
       </div>
     </section>
@@ -110,7 +230,7 @@ import { IconComponent } from '../../shared/components/icon.component';
     <app-confirm-dialog
       [open]="toDelete() !== null"
       title="Eliminar libro"
-      [message]="'¿Seguro que quieres eliminar «' + (toDelete()?.title ?? '') + '»? Se perderá también su sesión de lectura.'"
+      [message]="'¿Seguro que querés eliminar «' + (toDelete()?.title ?? '') + '»? Se perderá también su sesión de lectura.'"
       (confirmed)="confirmDelete()"
       (cancelled)="toDelete.set(null)"
     />
@@ -122,26 +242,52 @@ export class BooksListPage {
   private readonly sagaService = inject(SagaService);
   private readonly toast = inject(ToastService);
 
+  protected readonly STATUS_CHIPS = STATUS_CHIPS;
+  protected readonly skeletons = Array(10);
+
   protected readonly page = signal<PageResponse<Book> | null>(null);
   protected readonly loadError = signal(false);
   protected readonly categories = signal<Category[]>([]);
   protected readonly sagas = signal<Saga[]>([]);
   protected readonly view = signal<'cards' | 'table'>('cards');
   protected readonly toDelete = signal<Book | null>(null);
+  protected readonly activeStatus = signal<StatusFilter>('');
+  protected readonly showFilters = signal(false);
 
-  private filters: BookFilters = { page: 0, size: 12 };
+  /** Tracks advanced filter values to show the badge count. */
+  private advancedFilters: Partial<BookFilters> = {};
+
+  protected readonly hasAdvancedFilters = computed(() =>
+    Object.values(this.advancedFilters).some((v) => v !== '' && v != null)
+  );
+
+  protected readonly advancedFilterCount = computed(() =>
+    Object.values(this.advancedFilters).filter((v) => v !== '' && v != null).length
+  );
+
+  protected initialSearch = '';
+  private filters: BookFilters = { page: 0, size: 20 };
 
   constructor() {
     inject(SeoService).apply({
       title: 'Mis libros — MyLibrary',
-      description: 'Explora, filtra y gestiona todos los libros de tu biblioteca personal.',
+      description: 'Explorá, filtrá y gestioná todos los libros de tu biblioteca personal.',
       path: '/books'
     });
     this.categoryService.list().subscribe((categories) => this.categories.set(categories));
     this.sagaService.list().subscribe((sagas) => this.sagas.set(sagas));
 
     const searchParam = inject(ActivatedRoute).snapshot.queryParamMap.get('search');
-    if (searchParam) this.filters = { ...this.filters, search: searchParam };
+    if (searchParam) {
+      this.initialSearch = searchParam;
+      this.filters = { ...this.filters, search: searchParam };
+    }
+    this.load();
+  }
+
+  protected setStatus(value: StatusFilter): void {
+    this.activeStatus.set(value);
+    this.filters = { ...this.filters, status: value, page: 0 };
     this.load();
   }
 
@@ -150,7 +296,8 @@ export class BooksListPage {
     this.load();
   }
 
-  onFilters(partial: Partial<BookFilters>): void {
+  onAdvancedFilters(partial: Partial<BookFilters>): void {
+    this.advancedFilters = { ...this.advancedFilters, ...partial };
     this.filters = { ...this.filters, ...partial, page: 0 };
     this.load();
   }
@@ -184,6 +331,8 @@ export class BooksListPage {
   }
 
   private load(): void {
+    this.page.set(null);
+    this.loadError.set(false);
     this.bookService.list(this.filters).subscribe({
       next: (page) => this.page.set(page),
       error: () => {
