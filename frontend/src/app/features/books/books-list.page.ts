@@ -1,6 +1,8 @@
+import { DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   inject,
   signal
@@ -35,6 +37,18 @@ const STATUS_CHIPS: { label: string; value: StatusFilter; dot: string }[] = [
   { label: 'Leyendo',     value: 'READING',  dot: 'bg-toffee-brown' },
   { label: 'Terminados',  value: 'FINISHED', dot: 'bg-dusty-olive' },
 ];
+
+// Columnas del grid por ancho de pantalla (mismos cortes que los breakpoints de Tailwind).
+const GRID_BREAKPOINTS = [
+  { minWidth: 1536, columns: 6 },
+  { minWidth: 1280, columns: 5 },
+  { minWidth: 1024, columns: 4 },
+  { minWidth: 640, columns: 3 }
+] as const;
+const GRID_MIN_COLUMNS = 2;
+const GRID_SSR_COLUMNS = 4;
+// Libros por página = columnas × filas, así cada página llena termina en una fila completa.
+const GRID_ROWS = 3;
 
 @Component({
   selector: 'app-books-list-page',
@@ -174,7 +188,8 @@ const STATUS_CHIPS: { label: string; value: StatusFilter; dot: string }[] = [
             </div>
           } @else if (view() === 'cards') {
             <ul
-              class="grid list-none grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+              class="grid list-none gap-3"
+              [style.grid-template-columns]="gridTemplate()"
               role="list"
             >
               @for (book of result.content; track book.id) {
@@ -207,11 +222,12 @@ const STATUS_CHIPS: { label: string; value: StatusFilter; dot: string }[] = [
         } @else {
           <!-- Skeleton grid -->
           <ul
-            class="grid list-none grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+            class="grid list-none gap-3"
+            [style.grid-template-columns]="gridTemplate()"
             aria-label="Cargando libros…"
             role="list"
           >
-            @for (_ of skeletons; track $index) {
+            @for (_ of skeletons(); track $index) {
               <li>
                 <div class="card overflow-hidden">
                   <div class="aspect-[2/3] w-full animate-pulse bg-slate-200 dark:bg-slate-700"></div>
@@ -241,9 +257,17 @@ export class BooksListPage {
   private readonly categoryService = inject(CategoryService);
   private readonly sagaService = inject(SagaService);
   private readonly toast = inject(ToastService);
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly STATUS_CHIPS = STATUS_CHIPS;
-  protected readonly skeletons = Array(10);
+
+  private readonly gridColumns = signal(GRID_SSR_COLUMNS);
+  private readonly pageSize = computed(() => this.gridColumns() * GRID_ROWS);
+  protected readonly gridTemplate = computed(
+    () => `repeat(${this.gridColumns()}, minmax(0, 1fr))`
+  );
+  protected readonly skeletons = computed(() => Array.from({ length: this.pageSize() }));
 
   protected readonly page = signal<PageResponse<Book> | null>(null);
   protected readonly loadError = signal(false);
@@ -266,7 +290,7 @@ export class BooksListPage {
   );
 
   protected initialSearch = '';
-  private filters: BookFilters = { page: 0, size: 20 };
+  private filters: BookFilters = { page: 0 };
 
   constructor() {
     inject(SeoService).apply({
@@ -282,6 +306,7 @@ export class BooksListPage {
       this.initialSearch = searchParam;
       this.filters = { ...this.filters, search: searchParam };
     }
+    this.watchGridColumns();
     this.load();
   }
 
@@ -330,10 +355,42 @@ export class BooksListPage {
     this.load();
   }
 
+  private watchGridColumns(): void {
+    const win = this.document.defaultView;
+    if (!win?.matchMedia) {
+      return;
+    }
+    const queries = GRID_BREAKPOINTS.map(({ minWidth, columns }) => ({
+      columns,
+      list: win.matchMedia(`(min-width: ${minWidth}px)`)
+    }));
+    const currentColumns = () =>
+      queries.find((q) => q.list.matches)?.columns ?? GRID_MIN_COLUMNS;
+
+    this.gridColumns.set(currentColumns());
+
+    const onChange = () => this.changeColumns(currentColumns());
+    queries.forEach((q) => q.list.addEventListener('change', onChange));
+    this.destroyRef.onDestroy(() =>
+      queries.forEach((q) => q.list.removeEventListener('change', onChange))
+    );
+  }
+
+  private changeColumns(columns: number): void {
+    if (columns === this.gridColumns()) {
+      return;
+    }
+    // Conserva el primer libro visible al cambiar el tamaño de página.
+    const firstIndex = (this.filters.page ?? 0) * this.pageSize();
+    this.gridColumns.set(columns);
+    this.filters = { ...this.filters, page: Math.floor(firstIndex / this.pageSize()) };
+    this.load();
+  }
+
   private load(): void {
     this.page.set(null);
     this.loadError.set(false);
-    this.bookService.list(this.filters).subscribe({
+    this.bookService.list({ ...this.filters, size: this.pageSize() }).subscribe({
       next: (page) => this.page.set(page),
       error: () => {
         this.page.set(null);
