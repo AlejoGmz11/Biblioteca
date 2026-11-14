@@ -38,6 +38,12 @@ export interface ReadingProgress {
 /** Cada cuántos caracteres se marca una localización; sirven para medir cuánto texto tiene cada sección. */
 const CHARS_PER_LOCATION = 1000;
 
+/** Papel y tinta del libro. Claro: crema (#fefae0) con el oliva oscuro del resto de la app. */
+const PAPER = {
+  light: { paper: '#fefae0', text: '#2e3221', link: '#8a5a2b' },
+  dark: { paper: '#1d2318', text: '#e6e2d6', link: '#c9a97f' }
+} as const;
+
 /** Margen para que el libro termine de maquetarse antes de recolocar un ancla o un CFI. */
 const LAYOUT_SETTLE_MS = 150;
 
@@ -128,10 +134,7 @@ export class EpubReaderComponent {
   constructor() {
     afterNextRender(() => void this.load());
 
-    effect(() => {
-      const dark = this.dark();
-      this.rendition?.themes.select(dark ? 'dark' : 'light');
-    });
+    effect(() => this.applyTheme(this.dark()));
     effect(() => this.applyFontSize(this.fontSize()));
 
     this.destroyRef.onDestroy(() => {
@@ -146,6 +149,21 @@ export class EpubReaderComponent {
 
   prev(): void {
     void this.rendition?.prev();
+  }
+
+  /**
+   * Claro u oscuro dentro del libro. Se hace con overrides de epub.js (estilos
+   * en línea que se reemplazan) y no con un tema registrado por modo: epub.js
+   * crea una hoja de estilos por tema y no las reordena, así que la del oscuro,
+   * una vez insertada, ganaba siempre a la del claro y el libro se quedaba negro.
+   */
+  private applyTheme(dark: boolean): void {
+    const themes = this.rendition?.themes;
+    if (!themes) return;
+    const palette = dark ? PAPER.dark : PAPER.light;
+    themes.override('color', palette.text, true);
+    themes.override('background', palette.paper, true);
+    themes.override('--reader-link', palette.link);
   }
 
   /**
@@ -243,16 +261,17 @@ export class EpubReaderComponent {
         'text-align': 'justify',
         hyphens: 'auto'
       };
-      // Claro: crema de la paleta (#fefae0) con el mismo texto oliva oscuro que el resto de la app
-      this.rendition.themes.register('light', {
-        body: { ...typography, color: '#2e3221', background: '#fefae0' },
-        a: { color: '#8a5a2b' }
+      // Lo común a los dos modos va en el tema por defecto; los colores se aplican con applyTheme
+      this.rendition.themes.default({
+        body: typography,
+        a: { color: 'var(--reader-link)' },
+        // epub.js limita las imágenes al ancho de la columna en píxeles (!important), pero muchos
+        // libros dan márgenes laterales a los títulos (p. ej. h1 con margin: 0 10%): la imagen
+        // sobresalía de su caja y pasaba a la página siguiente. Esta regla, más específica,
+        // la mantiene dentro de su contenedor.
+        'body img, body svg': { 'max-width': '100% !important' }
       });
-      this.rendition.themes.register('dark', {
-        body: { ...typography, color: '#e6e2d6', background: '#1d2318' },
-        a: { color: '#c9a97f' }
-      });
-      this.rendition.themes.select(this.dark() ? 'dark' : 'light');
+      this.applyTheme(this.dark());
       this.applyFontSize(this.fontSize());
 
       this.rendition.on('relocated', (location: EpubLocation) => {
