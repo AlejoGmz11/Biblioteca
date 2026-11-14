@@ -15,7 +15,8 @@ const emptyStats: Stats = {
   avgDaysPerBook: 0,
   ratingDistribution: {},
   activityDays: [],
-  booksFinishedThisYear: 0
+  booksFinishedThisYear: 0,
+  recentlyFinished: []
 };
 
 describe('DashboardPage', () => {
@@ -40,9 +41,32 @@ describe('DashboardPage', () => {
     return httpMock.expectOne(`${environment.apiUrl}/stats/dashboard`);
   }
 
+  /** El panel pide en paralelo las estadísticas y los libros en lectura. */
+  function flushReadingBooks(titles: string[] = []) {
+    const content = titles.map((title, i) => ({ id: i + 1, title, author: 'Autora', pages: null, session: null }));
+    const req = httpMock.expectOne(
+      (r) => r.url === `${environment.apiUrl}/books` && r.params.get('status') === 'READING'
+    );
+    // Si las estadísticas fallan, forkJoin cancela esta petición: no hay nada que responder.
+    if (!req.cancelled) {
+      req.flush({ success: true, message: 'OK', data: { content }, timestamp: '' });
+    }
+  }
+
+  it('shows every book being read, not just the first four', async () => {
+    const req = await renderAndGetRequest();
+    req.flush({ success: true, message: 'OK', data: emptyStats, timestamp: '' });
+    flushReadingBooks(['Uno', 'Dos', 'Tres', 'Cuatro', 'Cinco', 'Seis']);
+    fixture.detectChanges();
+
+    const cards = fixture.nativeElement.querySelectorAll('a.card[href^="/books/"]');
+    expect(cards.length).toBe(6);
+  });
+
   it('shows an error state instead of loading forever when the request fails', async () => {
     const req = await renderAndGetRequest();
     req.flush('boom', { status: 500, statusText: 'Server Error' });
+    flushReadingBooks();
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
@@ -53,6 +77,7 @@ describe('DashboardPage', () => {
   it('retry reloads the stats after a failure', async () => {
     const req = await renderAndGetRequest();
     req.flush('boom', { status: 0, statusText: 'Connection refused' });
+    flushReadingBooks();
     fixture.detectChanges();
 
     const retryButton: HTMLButtonElement = fixture.nativeElement.querySelector('[role="alert"] button');
@@ -62,6 +87,7 @@ describe('DashboardPage', () => {
     httpMock
       .expectOne(`${environment.apiUrl}/stats/dashboard`)
       .flush({ success: true, message: 'OK', data: emptyStats, timestamp: '' });
+    flushReadingBooks();
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;

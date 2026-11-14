@@ -24,6 +24,7 @@ public class StatsService {
     private static final DateTimeFormatter DAY_FORMAT   = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final int MONTHS_BACK = 12;
     private static final int DAYS_BACK   = 365;
+    private static final int RECENT_FINISHED = 6;
 
     private final BookRepository bookRepository;
     private final ReadingSessionRepository sessionRepository;
@@ -48,7 +49,29 @@ public class StatsService {
                 .ratingDistribution(ratingDistribution(finished))
                 .activityDays(activityDays(finished))
                 .booksFinishedThisYear(booksFinishedThisYear(finished))
+                .recentlyFinished(recentlyFinished(finished))
                 .build();
+    }
+
+    /** Los más recientes primero; sin fecha de fin al final y, a igual fecha, el último añadido. */
+    private List<StatsResponse.RecentBook> recentlyFinished(List<ReadingSession> finished) {
+        Comparator<ReadingSession> newestFirst = Comparator
+                .comparing(ReadingSession::getEndDate, Comparator.nullsLast(Comparator.<LocalDate>reverseOrder()))
+                .thenComparing(ReadingSession::getId, Comparator.<Long>reverseOrder());
+
+        return finished.stream()
+                .sorted(newestFirst)
+                .limit(RECENT_FINISHED)
+                .map(s -> StatsResponse.RecentBook.builder()
+                        .bookId(s.getBook().getId())
+                        .title(s.getBook().getTitle())
+                        .author(s.getBook().getAuthor())
+                        .imageUrl(s.getBook().getImageUrl())
+                        .imagePath(s.getBook().getImagePath())
+                        .endDate(s.getEndDate())
+                        .rating(s.getRating())
+                        .build())
+                .toList();
     }
 
     private List<StatsResponse.MonthCount> booksPerMonth(List<ReadingSession> finished) {

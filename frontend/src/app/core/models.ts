@@ -118,6 +118,18 @@ export interface Stats {
   ratingDistribution: Record<string, number>;
   activityDays: { date: string; count: number }[];
   booksFinishedThisYear: number;
+  /** Últimos libros terminados, del más reciente al más antiguo. */
+  recentlyFinished: RecentFinishedBook[];
+}
+
+export interface RecentFinishedBook {
+  bookId: number;
+  title: string;
+  author: string;
+  imageUrl: string | null;
+  imagePath: string | null;
+  endDate: string | null;
+  rating: number | null;
 }
 
 export interface BookFilters {
@@ -128,6 +140,8 @@ export interface BookFilters {
   search?: string;
   /** id de saga, 'none' para autoconclusivos, o vacío. */
   saga?: string;
+  /** Estrellas (1–5); las medias redondean hacia arriba, igual que en el panel. */
+  rating?: number | '';
   page?: number;
   size?: number;
 }

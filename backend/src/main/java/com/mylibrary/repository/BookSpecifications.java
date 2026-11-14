@@ -25,6 +25,20 @@ public final class BookSpecifications {
         };
     }
 
+    /**
+     * Libros terminados cuya valoración redondea a {@code stars} (4,5 cuenta como 5),
+     * el mismo criterio que usa la distribución de valoraciones del panel.
+     */
+    public static Specification<Book> hasRating(int stars) {
+        return (root, query, cb) -> {
+            Join<Book, ReadingSession> session = root.join("session", JoinType.INNER);
+            return cb.and(
+                    cb.equal(session.get("status"), ReadingStatus.FINISHED),
+                    cb.greaterThanOrEqualTo(session.get("rating"), stars - 0.5),
+                    cb.lessThan(session.get("rating"), stars + 0.5));
+        };
+    }
+
     public static Specification<Book> hasCategory(Long categoryId) {
         return (root, query, cb) -> {
             query.distinct(true);

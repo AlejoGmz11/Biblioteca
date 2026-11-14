@@ -18,6 +18,7 @@ import { BookService } from '../../core/services/book.service';
 import { EbookService } from '../../core/services/ebook.service';
 import { EbookCacheService } from '../../core/services/ebook-cache.service';
 import { SeoService } from '../../core/services/seo.service';
+import { SessionTimeoutService } from '../../core/services/session-timeout.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/components/icon.component';
@@ -37,14 +38,15 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
     '(window:keydown)': 'onKeydown($event)'
   },
   template: `
-    <div class="fixed inset-0 z-40 flex flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <!-- "Página sobre mesa": fondo suave, página con borde fino y controles sin recuadro -->
+    <div class="fixed inset-0 z-40 flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
       <!-- Barra superior -->
       <header
         role="toolbar"
         aria-label="Controles del lector"
-        class="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white/95 px-2 py-1.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:gap-2 sm:px-4"
+        class="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900 sm:gap-2 sm:px-4"
       >
-        <a [routerLink]="['/books', id()]" class="btn-secondary !px-2" aria-label="Volver al libro">
+        <a [routerLink]="['/books', id()]" class="icon-btn" aria-label="Volver al libro">
           <app-icon name="arrow-left" [size]="18" />
         </a>
         <div class="min-w-0 flex-1">
@@ -55,39 +57,40 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
         </div>
 
         @if (book()?.ebookFormat === 'PDF') {
-          <div class="flex items-center gap-1" aria-label="Navegación de páginas">
-            <button type="button" class="btn-secondary !px-2" (click)="goToPage(page() - 1)" [disabled]="page() <= 1" aria-label="Página anterior">
+          <!-- En pantallas chicas no hay sitio para las flechas laterales: van aquí -->
+          <div class="control-pill" aria-label="Navegación de páginas">
+            <button type="button" class="icon-btn sm:!hidden" (click)="turnPage(-1)" [disabled]="!canTurnPage(-1)" aria-label="Página anterior">
               <app-icon name="chevron-left" [size]="16" />
             </button>
             <label class="sr-only" for="page-input">Página actual</label>
             <input
               id="page-input"
               type="number"
-              class="input !w-16 !py-1 text-center text-sm"
+              class="h-8 w-14 rounded-md border-0 bg-transparent p-0 text-center text-sm tabular-nums focus:bg-white focus:ring-1 focus:ring-primary-500 dark:focus:bg-slate-900"
               [value]="page()"
               min="1"
               [max]="totalPages()"
               (change)="onPageInput($event)"
             />
-            <span class="text-xs text-slate-500" aria-live="polite">/ {{ totalPages() || '…' }}</span>
-            <button type="button" class="btn-secondary !px-2" (click)="goToPage(page() + 1)" [disabled]="page() >= totalPages()" aria-label="Página siguiente">
+            <span class="pr-2 text-xs tabular-nums text-slate-500 dark:text-slate-400" aria-live="polite">/ {{ totalPages() || '…' }}</span>
+            <button type="button" class="icon-btn sm:!hidden" (click)="turnPage(1)" [disabled]="!canTurnPage(1)" aria-label="Página siguiente">
               <app-icon name="chevron-right" [size]="16" />
             </button>
           </div>
-          <div class="hidden items-center gap-1 sm:flex" aria-label="Zoom">
-            <button type="button" class="btn-secondary !px-2" (click)="zoomBy(-0.2)" [disabled]="zoom() <= 0.6" aria-label="Reducir">
+          <div class="control-pill !hidden sm:!flex" aria-label="Zoom">
+            <button type="button" class="icon-btn" (click)="zoomBy(-0.2)" [disabled]="zoom() <= 0.6" aria-label="Reducir">
               <app-icon name="minus" [size]="16" />
             </button>
-            <button type="button" class="btn-secondary !px-2 text-xs" (click)="zoom.set(1)" aria-label="Ajustar al ancho">
+            <button type="button" class="icon-btn" (click)="zoom.set(1)" aria-label="Ajustar al ancho">
               <app-icon name="arrows-expand" [size]="16" />
             </button>
-            <button type="button" class="btn-secondary !px-2" (click)="zoomBy(0.2)" [disabled]="zoom() >= 3" aria-label="Ampliar">
+            <button type="button" class="icon-btn" (click)="zoomBy(0.2)" [disabled]="zoom() >= 3" aria-label="Ampliar">
               <app-icon name="plus" [size]="16" />
             </button>
           </div>
           <button
             type="button"
-            class="btn-secondary !px-2"
+            class="icon-btn"
             (click)="toggleMode()"
             [attr.aria-pressed]="mode() === 'scroll'"
             [attr.aria-label]="mode() === 'scroll' ? 'Cambiar a modo página' : 'Cambiar a desplazamiento continuo'"
@@ -97,26 +100,27 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
         }
 
         @if (book()?.ebookFormat === 'EPUB') {
-          <div class="flex items-center gap-1" aria-label="Navegación">
-            <button type="button" class="btn-secondary !px-2" (click)="epub()?.prev()" aria-label="Anterior">
+          <!-- En pantallas chicas no hay sitio para las flechas laterales: van aquí -->
+          <div class="flex items-center sm:hidden" aria-label="Navegación">
+            <button type="button" class="icon-btn" (click)="turnPage(-1)" aria-label="Página anterior">
               <app-icon name="chevron-left" [size]="16" />
             </button>
-            <button type="button" class="btn-secondary !px-2" (click)="epub()?.next()" aria-label="Siguiente">
+            <button type="button" class="icon-btn" (click)="turnPage(1)" aria-label="Página siguiente">
               <app-icon name="chevron-right" [size]="16" />
             </button>
           </div>
-          <div class="hidden items-center gap-1 sm:flex" aria-label="Tamaño de letra">
-            <button type="button" class="btn-secondary !px-2" (click)="fontBy(-10)" [disabled]="fontSize() <= 70" aria-label="Letra más pequeña">
+          <div class="control-pill !hidden sm:!flex" aria-label="Tamaño de letra">
+            <button type="button" class="icon-btn" (click)="fontBy(-10)" [disabled]="fontSize() <= 70" aria-label="Letra más pequeña">
               <app-icon name="minus" [size]="16" />
             </button>
-            <span class="w-10 text-center text-xs text-slate-500">{{ fontSize() }}%</span>
-            <button type="button" class="btn-secondary !px-2" (click)="fontBy(10)" [disabled]="fontSize() >= 200" aria-label="Letra más grande">
+            <span class="w-11 text-center text-xs tabular-nums text-slate-600 dark:text-slate-300">{{ fontSize() }} %</span>
+            <button type="button" class="icon-btn" (click)="fontBy(10)" [disabled]="fontSize() >= 200" aria-label="Letra más grande">
               <app-icon name="plus" [size]="16" />
             </button>
           </div>
           <button
             type="button"
-            class="btn-secondary !px-2"
+            class="icon-btn"
             (click)="tocOpen.set(!tocOpen())"
             [attr.aria-expanded]="tocOpen()"
             aria-controls="reader-toc"
@@ -128,19 +132,19 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
 
         <button
           type="button"
-          class="btn-secondary !px-2"
+          class="icon-btn"
           (click)="theme.toggle()"
           [attr.aria-label]="theme.darkMode() ? 'Activar modo claro' : 'Activar modo oscuro'"
         >
           <app-icon [name]="theme.darkMode() ? 'sun' : 'moon'" [size]="16" />
         </button>
-        <button type="button" class="btn-secondary !px-2" (click)="download()" [disabled]="downloading()" aria-label="Descargar archivo">
+        <button type="button" class="icon-btn" (click)="download()" [disabled]="downloading()" aria-label="Descargar archivo">
           <app-icon name="download" [size]="16" />
         </button>
       </header>
 
       <!-- Área de lectura -->
-      <div class="relative min-h-0 flex-1 bg-slate-200 dark:bg-slate-900">
+      <div class="relative min-h-0 flex-1">
         @if (error()) {
           <div class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" role="alert">
             <span class="text-camel" aria-hidden="true"><app-icon name="warning" [size]="32" /></span>
@@ -151,36 +155,63 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
           <div class="flex h-full items-center justify-center p-6" role="status" aria-live="polite">
             <p class="text-sm text-slate-500">Descargando el libro… {{ progress() }}</p>
           </div>
-        } @else if (book()?.ebookFormat === 'PDF') {
-          <!-- "Página" vertical centrada, como en Apple Books: el documento nunca se estira a todo el ancho -->
-          <div class="mx-auto h-full w-full max-w-[46rem] sm:px-3 sm:py-3">
-            <div class="h-full overflow-hidden bg-[#fbfaf5] shadow-xl dark:bg-[#1d2318] sm:rounded-xl">
-              <app-pdf-reader
-                [data]="data()!"
-                [mode]="mode()"
-                [zoom]="zoom()"
-                [(page)]="page"
-                (totalPages)="totalPages.set($event)"
-                (outlineLoaded)="pdfChapters.set($event)"
-              />
+        } @else {
+          <!-- Página vertical centrada (nunca a todo el ancho) con una flecha a cada lado -->
+          <div class="mx-auto flex h-full w-full max-w-[54rem] items-stretch justify-center sm:gap-3 sm:px-4 sm:pb-1 sm:pt-4">
+            <button
+              type="button"
+              class="page-arrow hidden sm:flex"
+              (click)="turnPage(-1)"
+              [disabled]="!canTurnPage(-1)"
+              aria-label="Página anterior"
+            >
+              <app-icon name="chevron-left" [size]="18" />
+            </button>
+
+            <div
+              class="flex min-w-0 max-w-[46rem] flex-1 flex-col overflow-hidden bg-white dark:bg-[#1d2318]
+                     sm:rounded-xl sm:border sm:border-slate-200 sm:shadow-sm dark:sm:border-slate-800"
+            >
+              <div class="min-h-0 flex-1">
+                @if (book()?.ebookFormat === 'PDF') {
+                  <app-pdf-reader
+                    [data]="data()!"
+                    [mode]="mode()"
+                    [zoom]="zoom()"
+                    [(page)]="page"
+                    (totalPages)="totalPages.set($event)"
+                    (outlineLoaded)="pdfChapters.set($event)"
+                  />
+                } @else if (book()?.ebookFormat === 'EPUB') {
+                  <app-epub-reader
+                    #epubReader
+                    [data]="data()!"
+                    [initialLocation]="initialEpubLocation()"
+                    [dark]="theme.darkMode()"
+                    [fontSize]="fontSize()"
+                    (locationChange)="onLocation($event)"
+                    (chapterChange)="chapter.set($event)"
+                    (tocLoaded)="toc.set($event)"
+                    (progressChange)="epubProgress.set($event)"
+                    [cacheKey]="id()"
+                  />
+                }
+              </div>
+              <!-- Número de página al pie de la hoja, como en un libro -->
+              <p class="h-8 shrink-0 text-center text-xs tabular-nums leading-8 text-slate-400 dark:text-slate-500" aria-live="polite">
+                {{ pageLabel() }}
+              </p>
             </div>
-          </div>
-        } @else if (book()?.ebookFormat === 'EPUB') {
-          <div class="mx-auto h-full w-full max-w-[46rem] sm:px-3 sm:py-3">
-            <div class="h-full overflow-hidden bg-[#fbfaf5] shadow-xl dark:bg-[#1d2318] sm:rounded-xl">
-              <app-epub-reader
-                #epubReader
-                [data]="data()!"
-                [initialLocation]="initialEpubLocation()"
-                [dark]="theme.darkMode()"
-                [fontSize]="fontSize()"
-                (locationChange)="onLocation($event)"
-                (chapterChange)="chapter.set($event)"
-                (tocLoaded)="toc.set($event)"
-                (progressChange)="epubProgress.set($event)"
-                [cacheKey]="id()"
-              />
-            </div>
+
+            <button
+              type="button"
+              class="page-arrow hidden sm:flex"
+              (click)="turnPage(1)"
+              [disabled]="!canTurnPage(1)"
+              aria-label="Página siguiente"
+            >
+              <app-icon name="chevron-right" [size]="18" />
+            </button>
           </div>
 
           <!-- Índice EPUB -->
@@ -188,23 +219,24 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
             <nav
               id="reader-toc"
               aria-label="Índice del libro"
-              class="absolute inset-y-0 left-0 z-10 w-72 max-w-[85vw] overflow-y-auto border-r border-slate-200 bg-white p-3 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+              class="absolute inset-y-0 left-0 z-10 w-72 max-w-[85vw] overflow-y-auto border-r border-slate-200 bg-white p-3 shadow-lg dark:border-slate-800 dark:bg-slate-900"
             >
-              <div class="mb-2 flex items-center justify-between">
-                <p class="text-sm font-semibold">Índice</p>
-                <button type="button" class="btn-secondary !p-1" (click)="tocOpen.set(false)" aria-label="Cerrar índice">
+              <div class="mb-2 flex items-center justify-between pl-2">
+                <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Índice</p>
+                <button type="button" class="icon-btn !h-8 !w-8" (click)="tocOpen.set(false)" aria-label="Cerrar índice">
                   <app-icon name="x-mark" [size]="14" />
                 </button>
               </div>
               @if (toc().length === 0) {
-                <p class="text-xs text-slate-500">Este libro no incluye índice.</p>
+                <p class="px-2 text-xs text-slate-500 dark:text-slate-400">Este libro no incluye índice.</p>
               }
               <ul class="space-y-0.5" role="list">
                 @for (item of toc(); track $index) {
                   <li>
                     <button
                       type="button"
-                      class="w-full rounded px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                      [class]="tocItemClass(item)"
+                      [attr.aria-current]="item.label === chapter() ? 'true' : null"
                       [style.padding-left.rem]="0.5 + item.level * 0.75"
                       (click)="goToChapter(item)"
                     >
@@ -218,21 +250,15 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
         }
       </div>
 
-      <!-- Pie de progreso, como en Apple Books -->
+      <!-- Pie de progreso: lo que queda del capítulo, barra y porcentaje en una sola línea -->
       @if (data() && !error()) {
-        <footer
-          class="border-t border-slate-200 bg-white/95 px-4 py-1.5 text-xs text-slate-500 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-400"
-          aria-live="polite"
-        >
-          @if (progressPercent() !== null) {
-            <div class="mx-auto mb-1.5 h-1 w-full max-w-[46rem] overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden="true">
-              <div class="h-full rounded-full bg-primary-500 transition-[width] duration-300" [style.width.%]="progressPercent()"></div>
-            </div>
-          }
-          <div class="mx-auto flex w-full max-w-[46rem] items-center justify-between gap-3">
+        <footer class="px-4 py-2 text-xs text-slate-500 dark:text-slate-400" aria-live="polite">
+          <div class="mx-auto flex w-full max-w-[46rem] items-center gap-3">
             <span class="min-w-0 truncate">{{ chapterLeftLabel() }}</span>
-            <span class="shrink-0 font-medium text-slate-700 dark:text-slate-200">{{ pageLabel() }}</span>
-            <span class="w-12 shrink-0 text-right">{{ progressPercent() !== null ? progressPercent() + ' %' : '' }}</span>
+            <div class="h-1 min-w-10 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden="true">
+              <div class="h-full rounded-full bg-primary-500 transition-[width] duration-300" [style.width.%]="progressPercent() ?? 0"></div>
+            </div>
+            <span class="w-10 shrink-0 text-right tabular-nums">{{ progressPercent() !== null ? progressPercent() + ' %' : '' }}</span>
           </div>
         </footer>
       }
@@ -246,6 +272,7 @@ export class ReaderPage {
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly seo = inject(SeoService);
+  private readonly sessionTimeout = inject(SessionTimeoutService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly theme = inject(ThemeService);
@@ -361,6 +388,31 @@ export class ReaderPage {
     }
   }
 
+  /** Pasa página hacia atrás (−1) o hacia delante (+1) en cualquiera de los dos formatos. */
+  protected turnPage(direction: 1 | -1): void {
+    if (this.isPdf()) {
+      this.goToPage(this.page() + direction);
+    } else if (direction > 0) {
+      this.epub()?.next();
+    } else {
+      this.epub()?.prev();
+    }
+  }
+
+  /** En PDF se conocen los extremos; en EPUB es el propio libro quien se detiene. */
+  protected canTurnPage(direction: 1 | -1): boolean {
+    if (!this.isPdf()) return true;
+    return direction > 0 ? this.page() < this.totalPages() : this.page() > 1;
+  }
+
+  /** Entrada del índice; la del capítulo abierto queda resaltada. */
+  protected tocItemClass(item: EpubTocItem): string {
+    const base = 'w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors ';
+    return item.label === this.chapter()
+      ? base + 'bg-primary-50 font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+      : base + 'hover:bg-slate-100 dark:hover:bg-slate-800';
+  }
+
   // --- PDF ---
 
   goToPage(target: number): void {
@@ -391,12 +443,16 @@ export class ReaderPage {
   }
 
   onLocation(cfi: string): void {
+    // Pasar página dentro del iframe del libro también es usar la app
+    this.sessionTimeout.markActivity();
     this.progressUpdates.next({ ebookLocation: cfi });
   }
 
   goToChapter(item: EpubTocItem): void {
-    this.epub()?.goTo(item.href);
     this.tocOpen.set(false);
+    void this.epub()?.goTo(item.href).then((opened) => {
+      if (!opened) this.toast.error('No se pudo abrir ese capítulo');
+    });
   }
 
   download(): void {

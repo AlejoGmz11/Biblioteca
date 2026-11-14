@@ -15,6 +15,78 @@
   --charcoal-brown: #333d29ff;
 }
 
+/*
+ * Tema claro: solo la paleta #ccd5ae · #e9edc9 · #fefae0 · #faedcd · #d4a373.
+ * Pensado para no cansar la vista:
+ *  - nada de blanco puro: la página es salvia claro (#e9edc9) y las tarjetas crema (#fefae0),
+ *    así la superficie más luminosa ocupa menos pantalla;
+ *  - nada de negro puro: el texto es un oliva muy oscuro (≈12:1 sobre crema, sin llegar a 21:1);
+ *  - el texto secundario y las pistas superan 4.5:1 (WCAG AA).
+ * Como los cinco colores son claros, los tonos de texto y de énfasis (slate 300+ y
+ * primary 600+) son versiones oscurecidas de esos mismos matices salvia y arena.
+ * Valores en «R G B» para poder usar opacidad: bg-white/85, border-slate-200/60…
+ */
+:root {
+  --c-white: 254 250 224;        /* #fefae0 · tarjetas, inputs, barra superior */
+
+  --c-slate-50: 233 237 201;     /* #e9edc9 · fondo de página */
+  --c-slate-100: 250 237 205;    /* #faedcd · hover y rellenos suaves */
+  --c-slate-200: 204 213 174;    /* #ccd5ae · bordes y divisores */
+  --c-slate-300: 174 185 138;    /* borde de inputs */
+  --c-slate-400: 106 113 75;     /* pistas e iconos · 4.9:1 */
+  --c-slate-500: 90 96 64;       /* texto secundario · 6.3:1 */
+  --c-slate-600: 76 82 54;
+  --c-slate-700: 64 69 45;
+  --c-slate-800: 53 58 38;
+  --c-slate-900: 46 50 33;       /* texto principal · 12.5:1 */
+  --c-slate-950: 35 38 26;
+
+  --c-primary-50: 250 237 205;   /* #faedcd */
+  --c-primary-100: 243 221 182;
+  --c-primary-200: 235 205 162;
+  --c-primary-300: 224 185 138;
+  --c-primary-400: 218 174 127;
+  --c-primary-500: 212 163 115;  /* #d4a373 · acento: botones, barras, progreso */
+  --c-primary-600: 138 90 43;    /* arena oscurecido: enlaces e iconos · 5.6:1 */
+  --c-primary-700: 107 68 35;
+  --c-primary-800: 74 47 23;
+  --c-primary-900: 51 32 15;
+  --c-primary-950: 34 21 10;
+
+  --focus-ring: 138 90 43;
+}
+
+/* Tema oscuro: la paleta tierra original, sin cambios. */
+.dark {
+  --c-white: 255 255 255;
+
+  --c-slate-50: 247 246 240;
+  --c-slate-100: 237 236 221;
+  --c-slate-200: 194 197 170;    /* dry-sage */
+  --c-slate-300: 182 173 144;    /* khaki-beige */
+  --c-slate-400: 164 172 134;    /* dry-sage-2 */
+  --c-slate-500: 125 133 95;
+  --c-slate-600: 101 109 74;     /* dusty-olive */
+  --c-slate-700: 83 91 63;
+  --c-slate-800: 65 72 51;       /* ebony */
+  --c-slate-900: 51 61 41;       /* charcoal-brown */
+  --c-slate-950: 38 46 30;
+
+  --c-primary-50: 250 245 238;
+  --c-primary-100: 242 231 214;
+  --c-primary-200: 226 204 171;
+  --c-primary-300: 201 169 127;
+  --c-primary-400: 166 138 100;  /* camel */
+  --c-primary-500: 147 102 57;   /* toffee-brown */
+  --c-primary-600: 127 79 36;    /* saddle-brown */
+  --c-primary-700: 88 47 14;     /* dark-walnut */
+  --c-primary-800: 70 37 11;
+  --c-primary-900: 53 28 8;
+  --c-primary-950: 36 19 5;
+
+  --focus-ring: 147 102 57;
+}
+
 @layer base {
   html {
     /* Relative root size so user font-size preferences are respected (WCAG 1.4.4) */
@@ -28,7 +100,7 @@
 
   /* Visible focus for keyboard navigation (WCAG 2.4.7) */
   :focus-visible {
-    outline: 2px solid theme('colors.primary.500');
+    outline: 2px solid rgb(var(--focus-ring));
     outline-offset: 2px;
     border-radius: 0.25rem;
   }
@@ -64,7 +136,8 @@
   }
 
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-400 dark:text-slate-950;
+    /* Claro: arena de la paleta con texto marrón muy oscuro (7.9:1) */
+    @apply btn bg-primary-500 text-primary-950 hover:bg-primary-400 dark:bg-primary-500 dark:hover:bg-primary-400 dark:text-slate-950;
   }
 
   .btn-secondary {
@@ -146,6 +219,33 @@
   .filter-btn.active {
     @apply border-primary-500 bg-primary-50 text-primary-700
       dark:border-primary-400 dark:bg-primary-900/20 dark:text-primary-300;
+  }
+
+  /* ── Lector: controles sin recuadro ── */
+  .icon-btn {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-600
+      transition-colors hover:bg-slate-100 hover:text-slate-900
+      disabled:pointer-events-none disabled:opacity-40
+      dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white;
+  }
+
+  /* Grupo de controles relacionados (tamaño de letra, zoom, página) */
+  .control-pill {
+    @apply flex items-center gap-0.5 rounded-lg bg-slate-100 px-1 dark:bg-slate-800;
+  }
+
+  .control-pill .icon-btn {
+    @apply h-8 w-8 hover:bg-white dark:hover:bg-slate-700;
+  }
+
+  /* Flechas redondas a los lados de la página */
+  .page-arrow {
+    @apply h-10 w-10 shrink-0 items-center justify-center self-center rounded-full border
+      border-slate-200 bg-white text-slate-600 shadow-sm transition-colors
+      hover:border-primary-500 hover:text-slate-900
+      disabled:pointer-events-none disabled:opacity-40
+      dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300
+      dark:hover:border-primary-400 dark:hover:text-white;
   }
 
   .cat-section-label {

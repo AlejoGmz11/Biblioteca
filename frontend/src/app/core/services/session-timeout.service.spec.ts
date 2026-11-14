@@ -38,16 +38,17 @@ describe('SessionTimeoutService', () => {
     TestBed.inject(SessionTimeoutService);
     tick(0);
 
-    // A los 20 minutos el usuario interactúa
-    tick(20 * 60 * 1000);
+    // A los dos tercios del plazo el usuario interactúa
+    const twoThirds = Math.round((TIMEOUT_MS * 2) / 3);
+    tick(twoThirds);
     document.dispatchEvent(new Event('click'));
 
-    // 20 minutos más (40 en total, pero solo 20 desde la última actividad)
-    tick(20 * 60 * 1000);
+    // Otros dos tercios (más que el plazo en total, pero no desde la última actividad)
+    tick(twoThirds);
     expect(logoutSpy).not.toHaveBeenCalled();
 
-    // 10 minutos más sin actividad completan la media hora
-    tick(10 * 60 * 1000 + CHECK_MS);
+    // El tercio restante sin actividad completa el plazo
+    tick(TIMEOUT_MS - twoThirds + CHECK_MS);
     expect(logoutSpy).toHaveBeenCalled();
     flush();
   }));

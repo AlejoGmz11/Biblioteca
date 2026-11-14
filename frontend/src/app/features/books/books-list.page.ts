@@ -124,7 +124,7 @@ const GRID_ROWS = 3;
           Filtros
           @if (hasAdvancedFilters()) {
             <span class="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full
-                         bg-primary-500 text-[0.65rem] font-bold text-white">
+                         bg-primary-600 text-[0.65rem] font-bold text-white">
               {{ advancedFilterCount() }}
             </span>
           }
@@ -169,6 +169,7 @@ const GRID_ROWS = 3;
           <app-filter-panel
             [categories]="categories()"
             [sagas]="sagas()"
+            [rating]="advancedFilters().rating ?? ''"
             (filtersChange)="onAdvancedFilters($event)"
           />
         </div>
@@ -279,15 +280,13 @@ export class BooksListPage {
   protected readonly showFilters = signal(false);
 
   /** Tracks advanced filter values to show the badge count. */
-  private advancedFilters: Partial<BookFilters> = {};
-
-  protected readonly hasAdvancedFilters = computed(() =>
-    Object.values(this.advancedFilters).some((v) => v !== '' && v != null)
-  );
+  protected readonly advancedFilters = signal<Partial<BookFilters>>({});
 
   protected readonly advancedFilterCount = computed(() =>
-    Object.values(this.advancedFilters).filter((v) => v !== '' && v != null).length
+    Object.values(this.advancedFilters()).filter((v) => v !== '' && v != null).length
   );
+
+  protected readonly hasAdvancedFilters = computed(() => this.advancedFilterCount() > 0);
 
   protected initialSearch = '';
   private filters: BookFilters = { page: 0 };
@@ -301,10 +300,18 @@ export class BooksListPage {
     this.categoryService.list().subscribe((categories) => this.categories.set(categories));
     this.sagaService.list().subscribe((sagas) => this.sagas.set(sagas));
 
-    const searchParam = inject(ActivatedRoute).snapshot.queryParamMap.get('search');
+    const queryParams = inject(ActivatedRoute).snapshot.queryParamMap;
+    const searchParam = queryParams.get('search');
     if (searchParam) {
       this.initialSearch = searchParam;
       this.filters = { ...this.filters, search: searchParam };
+    }
+    // ?rating=N llega desde «Mis valoraciones» del panel: se aplica y se muestra el filtro.
+    const ratingParam = Number(queryParams.get('rating'));
+    if (Number.isInteger(ratingParam) && ratingParam >= 1 && ratingParam <= 5) {
+      this.filters = { ...this.filters, rating: ratingParam };
+      this.advancedFilters.set({ rating: ratingParam });
+      this.showFilters.set(true);
     }
     this.watchGridColumns();
     this.load();
@@ -322,7 +329,7 @@ export class BooksListPage {
   }
 
   onAdvancedFilters(partial: Partial<BookFilters>): void {
-    this.advancedFilters = { ...this.advancedFilters, ...partial };
+    this.advancedFilters.update((current) => ({ ...current, ...partial }));
     this.filters = { ...this.filters, ...partial, page: 0 };
     this.load();
   }

@@ -51,6 +51,7 @@ public class BookService {
                                            String author,
                                            String search,
                                            String saga,
+                                           Integer rating,
                                            Pageable pageable) {
         Specification<Book> spec = BookSpecifications.ownedBy(userId);
         if (status != null) {
@@ -67,6 +68,12 @@ public class BookService {
             spec = "none".equalsIgnoreCase(saga)
                     ? spec.and(BookSpecifications.standalone())
                     : spec.and(BookSpecifications.inSaga(parseSagaId(saga)));
+        }
+        if (rating != null) {
+            if (rating < 1 || rating > 5) {
+                throw new BadRequestException("Filtro de valoración no válido: " + rating);
+            }
+            spec = spec.and(BookSpecifications.hasRating(rating));
         }
         if (author != null && !author.isBlank()) {
             spec = spec.and(BookSpecifications.byAuthor(author));

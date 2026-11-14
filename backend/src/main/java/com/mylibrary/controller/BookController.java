@@ -36,9 +36,10 @@ public class BookController {
             @RequestParam(required = false) String author,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String saga,
+            @RequestParam(required = false) Integer rating,
             @PageableDefault(size = 12, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.ok(
-                library.listBooks(user.getId(), status, category, type, author, search, saga, pageable)));
+                library.listBooks(user.getId(), status, category, type, author, search, saga, rating, pageable)));
     }
 
     @GetMapping("/{id}")
