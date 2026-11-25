@@ -14,6 +14,13 @@ const palette = {
   'charcoal-brown': '#333d29'
 };
 
+// Las escalas `primary`, `slate` y `white` salen de variables CSS para que cada tema
+// tenga sus propios valores: los del modo claro y el oscuro están en src/styles.css.
+const themed = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
+const STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+const themedScale = (prefix) =>
+  Object.fromEntries(STEPS.map((step) => [step, themed(`${prefix}-${step}`)]));
+
 module.exports = {
   darkMode: 'class',
   content: ['./src/**/*.{html,ts}'],
@@ -21,34 +28,12 @@ module.exports = {
     extend: {
       colors: {
         ...palette,
-        // Escala de marca: marrones cálidos (nogal → camel)
-        primary: {
-          50: '#faf5ee',
-          100: '#f2e7d6',
-          200: '#e2ccab',
-          300: '#c9a97f',
-          400: palette.camel,
-          500: palette['toffee-brown'],
-          600: palette['saddle-brown'],
-          700: palette['dark-walnut'],
-          800: '#46250b',
-          900: '#351c08',
-          950: '#241305'
-        },
-        // Neutros remapeados: salvia/oliva en lugar del gris azulado
-        slate: {
-          50: '#f7f6f0',
-          100: '#edecdd',
-          200: palette['dry-sage'],
-          300: palette['khaki-beige'],
-          400: palette['dry-sage-2'],
-          500: '#7d855f',
-          600: palette['dusty-olive'],
-          700: '#535b3f',
-          800: palette.ebony,
-          900: palette['charcoal-brown'],
-          950: '#262e1e'
-        }
+        // En modo claro no hay blanco puro: `white` es el crema de la paleta
+        white: themed('white'),
+        // Escala de marca (acento)
+        primary: themedScale('primary'),
+        // Neutros: fondos, bordes y texto
+        slate: themedScale('slate')
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif']

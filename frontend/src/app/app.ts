@@ -24,7 +24,7 @@ import { ToastContainerComponent } from './shared/components/toast-container.com
       <app-navbar />
     }
 
-    <main id="main-content" role="main" class="mx-auto min-h-screen w-full max-w-7xl px-4 py-6" tabindex="-1">
+    <main id="main-content" role="main" class="mx-auto min-h-screen w-full max-w-screen-2xl px-4 py-6" tabindex="-1">
       <router-outlet />
     </main>
 
@@ -41,7 +41,7 @@ export class App {
   constructor() {
     // Instantiate the theme service early so the persisted theme is applied
     inject(ThemeService);
-    // Auto-logout tras 30 minutos de inactividad
+    // Auto-logout por inactividad (environment.sessionTimeoutMinutes)
     inject(SessionTimeoutService);
   }
 }

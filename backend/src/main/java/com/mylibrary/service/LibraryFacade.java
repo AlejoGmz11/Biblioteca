@@ -46,8 +46,8 @@ public class LibraryFacade {
 
     public PageResponse<BookResponse> listBooks(Long userId, ReadingStatus status, Long categoryId,
                                                 BookType type, String author, String search,
-                                                String saga, Pageable pageable) {
-        return bookService.list(userId, status, categoryId, type, author, search, saga, pageable);
+                                                String saga, Integer rating, Pageable pageable) {
+        return bookService.list(userId, status, categoryId, type, author, search, saga, rating, pageable);
     }
 
     public BookResponse getBook(Long userId, Long bookId) {

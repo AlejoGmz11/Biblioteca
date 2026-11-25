@@ -118,6 +118,45 @@ export interface Stats {
   ratingDistribution: Record<string, number>;
   activityDays: { date: string; count: number }[];
   booksFinishedThisYear: number;
+  /** Últimos libros terminados, del más reciente al más antiguo. */
+  recentlyFinished: RecentFinishedBook[];
+}
+
+export interface RecentFinishedBook {
+  bookId: number;
+  title: string;
+  author: string;
+  imageUrl: string | null;
+  imagePath: string | null;
+  endDate: string | null;
+  rating: number | null;
+}
+
+/** Una acepción de una palabra del diccionario. */
+export interface DictionarySense {
+  /** Numeración: «1», «1.a»… (vacía si el diccionario no la da). */
+  number: string;
+  /** Clase gramatical («sustantivo masculino»), vacía si no consta. */
+  category: string;
+  /** Marca de uso («desusado»), vacía si no consta. */
+  usage: string;
+  definition: string;
+  examples: string[];
+}
+
+/** Entrada de un lema: «faroles» devuelve la de «farol»; «habían», las de «haber». */
+export interface DictionaryLemma {
+  lemma: string;
+  /** 1, 2… cuando hay varias entradas del mismo lema; si no, null. */
+  homonym: number | null;
+  etymology: string;
+  senses: DictionarySense[];
+}
+
+export interface DictionaryEntry {
+  word: string;
+  found: boolean;
+  lemmas: DictionaryLemma[];
 }
 
 export interface BookFilters {
@@ -128,6 +167,8 @@ export interface BookFilters {
   search?: string;
   /** id de saga, 'none' para autoconclusivos, o vacío. */
   saga?: string;
+  /** Estrellas (1–5); las medias redondean hacia arriba, igual que en el panel. */
+  rating?: number | '';
   page?: number;
   size?: number;
 }

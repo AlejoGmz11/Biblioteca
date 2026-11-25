@@ -11,7 +11,7 @@ import { ClickOutsideDirective } from '../directives/click-outside.directive';
   imports: [RouterLink, RouterLinkActive, DarkModeToggleComponent, ClickOutsideDirective, IconComponent],
   template: `
     <header role="banner" class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
-      <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
+      <div class="mx-auto flex max-w-screen-2xl items-center justify-between gap-4 px-4 py-3">
         <a routerLink="/dashboard" class="flex items-center gap-2 text-lg font-bold" aria-label="MyLibrary, ir al panel">
           <span class="text-primary-600 dark:text-primary-400" aria-hidden="true">
             <app-icon name="book-open" [size]="24" [strokeWidth]="2" />

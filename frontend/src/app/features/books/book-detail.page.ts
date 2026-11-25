@@ -349,13 +349,37 @@ function todayNumber(): number {
             <section class="card col-span-2 p-5 sm:p-6" aria-labelledby="about-title">
               <h2 id="about-title" class="cat-section-label mb-3">Sobre el libro</h2>
 
-              @if (b.description) {
-                <p class="mb-4 max-w-prose text-sm text-slate-600 dark:text-slate-300" itemprop="description">
-                  {{ b.description }}
-                </p>
+              <!-- Desde lg: sinopsis y géneros a la izquierda, datos apilados a la derecha con un divisor.
+                   Sin sinopsis ni géneros, los datos ocupan todo el ancho en una fila. -->
+              @let hasStory = !!b.description || b.categories.length > 0;
+              <div [class]="hasStory ? 'grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] lg:gap-0' : ''">
+              @if (hasStory) {
+                <div class="min-w-0 lg:pr-8">
+                  @if (b.description) {
+                    <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300" itemprop="description">
+                      {{ b.description }}
+                    </p>
+                  }
+                  @if (b.categories.length) {
+                    <div class="flex flex-wrap gap-1.5" [class.mt-4]="!!b.description">
+                      @for (category of b.categories; track category.id) {
+                        <span
+                          class="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700
+                                 dark:bg-primary-900/50 dark:text-primary-300"
+                          itemprop="genre"
+                        >{{ category.name }}</span>
+                      }
+                    </div>
+                  }
+                </div>
               }
 
-              <dl class="grid grid-cols-2 gap-x-6 gap-y-3.5 text-sm lg:grid-cols-4">
+              <dl
+                class="grid grid-cols-2 gap-x-6 gap-y-3.5 text-sm"
+                [class]="hasStory
+                  ? 'lg:grid-cols-1 lg:content-start lg:border-l lg:border-slate-200 lg:pl-8 dark:lg:border-slate-700'
+                  : 'lg:grid-cols-4'"
+              >
                 @if (b.pages) {
                   <div>
                     <dt class="text-xs text-slate-400">Páginas</dt>
@@ -379,18 +403,7 @@ function todayNumber(): number {
                   </div>
                 }
               </dl>
-
-              @if (b.categories.length) {
-                <div class="mt-4 flex flex-wrap gap-1.5">
-                  @for (category of b.categories; track category.id) {
-                    <span
-                      class="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700
-                             dark:bg-primary-900/50 dark:text-primary-300"
-                      itemprop="genre"
-                    >{{ category.name }}</span>
-                  }
-                </div>
-              }
+              </div>
             </section>
 
             <!-- Notas -->

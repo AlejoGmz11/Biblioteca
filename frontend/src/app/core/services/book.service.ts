@@ -27,6 +27,7 @@ export class BookService {
     if (filters.author) params = params.set('author', filters.author);
     if (filters.search) params = params.set('search', filters.search);
     if (filters.saga) params = params.set('saga', filters.saga);
+    if (filters.rating) params = params.set('rating', filters.rating);
 
     return this.http
       .get<ApiResponse<PageResponse<Book>>>(this.base, { params })

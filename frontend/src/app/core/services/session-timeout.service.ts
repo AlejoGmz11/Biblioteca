@@ -45,6 +45,14 @@ export class SessionTimeoutService {
     });
   }
 
+  /**
+   * Cuenta como actividad algo que los eventos del documento no ven, como pasar
+   * página dentro del iframe del lector EPUB.
+   */
+  markActivity(): void {
+    this.lastActivity = Date.now();
+  }
+
   private start(): void {
     this.lastActivity = Date.now();
     if (this.intervalId !== null) {

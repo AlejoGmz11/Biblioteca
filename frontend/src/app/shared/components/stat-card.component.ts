@@ -7,8 +7,11 @@ type StatColor = 'primary' | 'olive' | 'sage' | 'muted';
   selector: 'app-stat-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent],
+  // El host ocupa toda la celda del grid para que todas las tarjetas midan lo mismo,
+  // tengan o no texto de ayuda.
+  host: { class: 'block h-full' },
   template: `
-    <article class="card relative overflow-hidden p-5 transition-shadow hover:shadow-md">
+    <article class="card relative h-full overflow-hidden p-5 transition-shadow hover:shadow-md">
       <div class="flex items-start justify-between gap-3">
         <div>
           <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ label() }}</p>
