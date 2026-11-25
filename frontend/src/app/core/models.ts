@@ -132,6 +132,33 @@ export interface RecentFinishedBook {
   rating: number | null;
 }
 
+/** Una acepción de una palabra del diccionario. */
+export interface DictionarySense {
+  /** Numeración: «1», «1.a»… (vacía si el diccionario no la da). */
+  number: string;
+  /** Clase gramatical («sustantivo masculino»), vacía si no consta. */
+  category: string;
+  /** Marca de uso («desusado»), vacía si no consta. */
+  usage: string;
+  definition: string;
+  examples: string[];
+}
+
+/** Entrada de un lema: «faroles» devuelve la de «farol»; «habían», las de «haber». */
+export interface DictionaryLemma {
+  lemma: string;
+  /** 1, 2… cuando hay varias entradas del mismo lema; si no, null. */
+  homonym: number | null;
+  etymology: string;
+  senses: DictionarySense[];
+}
+
+export interface DictionaryEntry {
+  word: string;
+  found: boolean;
+  lemmas: DictionaryLemma[];
+}
+
 export interface BookFilters {
   status?: ReadingStatus | '';
   category?: number | '';

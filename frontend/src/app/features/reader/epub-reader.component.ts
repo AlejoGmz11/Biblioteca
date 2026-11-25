@@ -40,9 +40,22 @@ const CHARS_PER_LOCATION = 1000;
 
 /** Papel y tinta del libro. Claro: crema (#fefae0) con el oliva oscuro del resto de la app. */
 const PAPER = {
-  light: { paper: '#fefae0', text: '#2e3221', link: '#8a5a2b' },
-  dark: { paper: '#1d2318', text: '#e6e2d6', link: '#c9a97f' }
+  light: { paper: '#fefae0', text: '#2e3221', link: '#8a5a2b', selection: '#d4a373', selectionText: '#2e3221' },
+  dark: { paper: '#1d2318', text: '#e6e2d6', link: '#c9a97f', selection: '#936639', selectionText: '#fefae0' }
 } as const;
+
+/**
+ * Palabra suelta de lo seleccionado en el libro, sin espacios ni signos alrededor
+ * (un doble clic en Windows selecciona también el espacio final). Devuelve null si
+ * es otra cosa: varias palabras, números o un trozo demasiado largo.
+ */
+export function extractWord(selection: string): string | null {
+  const word = selection.trim().replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
+  return /^\p{L}[\p{L}'’-]{0,59}$/u.test(word) ? word : null;
+}
+
+/** Espera tras el último cambio de tamaño del visor antes de volver a maquetar. */
+const RESIZE_DEBOUNCE_MS = 150;
 
 /** Margen para que el libro termine de maquetarse antes de recolocar un ancla o un CFI. */
 const LAYOUT_SETTLE_MS = 150;
@@ -106,6 +119,8 @@ export class EpubReaderComponent {
   readonly tocLoaded = output<EpubTocItem[]>();
   readonly progressChange = output<ReadingProgress>();
   readonly loaded = output<void>();
+  /** Palabra suelta seleccionada en el libro (para el diccionario). */
+  readonly wordSelected = output<string>();
   /** Clave para cachear las localizaciones en localStorage (p. ej. el id del libro). */
   readonly cacheKey = input<string | null>(null);
 
@@ -120,6 +135,8 @@ export class EpubReaderComponent {
   private locationsReady = false;
   private lastLocation: EpubLocation | null = null;
   private touchStartX = 0;
+  private resizeObserver: ResizeObserver | null = null;
+  private resizeTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Páginas reales: dependen del tamaño de letra y del tamaño de la ventana.
   /** Caracteres aproximados de cada sección del libro (por posición en el spine). */
@@ -138,6 +155,8 @@ export class EpubReaderComponent {
     effect(() => this.applyFontSize(this.fontSize()));
 
     this.destroyRef.onDestroy(() => {
+      this.resizeObserver?.disconnect();
+      if (this.resizeTimer) clearTimeout(this.resizeTimer);
       this.rendition?.destroy();
       this.book?.destroy();
     });
@@ -164,6 +183,29 @@ export class EpubReaderComponent {
     themes.override('color', palette.text, true);
     themes.override('background', palette.paper, true);
     themes.override('--reader-link', palette.link);
+    themes.override('--reader-selection', palette.selection);
+    themes.override('--reader-selection-text', palette.selectionText);
+  }
+
+  /**
+   * Reajusta el libro cuando su contenedor cambia de tamaño sin que cambie la
+   * ventana (p. ej. al abrir el panel del diccionario); epub.js solo escucha a
+   * la ventana. Conserva el punto de lectura.
+   */
+  private watchViewerSize(): void {
+    const viewer = this.viewer().nativeElement;
+    const sizeOf = () => `${viewer.clientWidth}x${viewer.clientHeight}`;
+    let last = sizeOf();
+    this.resizeObserver = new ResizeObserver(() => {
+      if (sizeOf() === last) return;
+      last = sizeOf();
+      if (this.resizeTimer) clearTimeout(this.resizeTimer);
+      this.resizeTimer = setTimeout(
+        () => this.rendition?.resize(viewer.clientWidth, viewer.clientHeight),
+        RESIZE_DEBOUNCE_MS
+      );
+    });
+    this.resizeObserver.observe(viewer);
   }
 
   /**
@@ -269,7 +311,9 @@ export class EpubReaderComponent {
         // libros dan márgenes laterales a los títulos (p. ej. h1 con margin: 0 10%): la imagen
         // sobresalía de su caja y pasaba a la página siguiente. Esta regla, más específica,
         // la mantiene dentro de su contenedor.
-        'body img, body svg': { 'max-width': '100% !important' }
+        'body img, body svg': { 'max-width': '100% !important' },
+        // La palabra que se consulta en el diccionario queda marcada con el acento de la app
+        '::selection': { background: 'var(--reader-selection)', color: 'var(--reader-selection-text)' }
       });
       this.applyTheme(this.dark());
       this.applyFontSize(this.fontSize());
@@ -284,6 +328,13 @@ export class EpubReaderComponent {
       });
       // Teclas dentro del iframe del libro
       this.rendition.on('keydown', (event: KeyboardEvent) => this.zone.run(() => this.onKey(event)));
+      // Selección terminada (doble clic o pulsación larga): si es una palabra, a consultarla
+      this.rendition.on('selected', (_cfiRange: string, contents: { window: Window }) => {
+        const word = extractWord(contents.window.getSelection()?.toString() ?? '');
+        if (word) {
+          this.zone.run(() => this.wordSelected.emit(word));
+        }
+      });
 
       const navigation = await this.book.loaded.navigation;
       this.toc = this.flatten(navigation.toc, 0);
@@ -302,6 +353,7 @@ export class EpubReaderComponent {
       }
       this.ready.set(true);
       this.loaded.emit();
+      this.watchViewerSize();
 
       // Páginas virtuales: se calculan en segundo plano (o se recuperan de la caché)
       void this.prepareLocations();

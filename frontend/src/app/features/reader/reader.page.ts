@@ -22,6 +22,7 @@ import { SessionTimeoutService } from '../../core/services/session-timeout.servi
 import { ThemeService } from '../../core/services/theme.service';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/components/icon.component';
+import { DictionaryPanelComponent, DictionaryRequest } from './dictionary-panel.component';
 import { EpubReaderComponent, EpubTocItem, ReadingProgress } from './epub-reader.component';
 import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
 
@@ -33,7 +34,7 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
 @Component({
   selector: 'app-reader-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, PdfReaderComponent, EpubReaderComponent],
+  imports: [RouterLink, IconComponent, PdfReaderComponent, EpubReaderComponent, DictionaryPanelComponent],
   host: {
     '(window:keydown)': 'onKeydown($event)'
   },
@@ -132,6 +133,17 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
 
         <button
           type="button"
+          [class]="dictOpen() ? 'icon-btn bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300' : 'icon-btn'"
+          (click)="toggleDictionary()"
+          [attr.aria-pressed]="dictOpen()"
+          aria-controls="reader-dictionary"
+          aria-label="Diccionario"
+          title="Diccionario"
+        >
+          <app-icon name="book-open" [size]="16" />
+        </button>
+        <button
+          type="button"
           class="icon-btn"
           (click)="theme.toggle()"
           [attr.aria-label]="theme.darkMode() ? 'Activar modo claro' : 'Activar modo oscuro'"
@@ -143,8 +155,9 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
         </button>
       </header>
 
-      <!-- Área de lectura -->
-      <div class="relative min-h-0 flex-1">
+      <!-- Área de lectura: el libro y, si está abierto, el diccionario a la derecha -->
+      <div class="flex min-h-0 flex-1">
+      <div class="relative min-h-0 min-w-0 flex-1">
         @if (error()) {
           <div class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" role="alert">
             <span class="text-camel" aria-hidden="true"><app-icon name="warning" [size]="32" /></span>
@@ -189,6 +202,7 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
                     [initialLocation]="initialEpubLocation()"
                     [dark]="theme.darkMode()"
                     [fontSize]="fontSize()"
+                    (wordSelected)="lookupWord($event)"
                     (locationChange)="onLocation($event)"
                     (chapterChange)="chapter.set($event)"
                     (tocLoaded)="toc.set($event)"
@@ -248,6 +262,18 @@ import { PdfChapter, PdfReaderComponent } from './pdf-reader.component';
             </nav>
           }
         }
+      </div>
+
+      @if (dictOpen() && data() && !error()) {
+        <!-- Desde lg el libro cede ancho al panel; en pantallas chicas el panel se superpone -->
+        <app-dictionary-panel
+          id="reader-dictionary"
+          class="absolute inset-y-0 right-0 z-20 w-80 max-w-[90vw] shadow-lg lg:static lg:z-auto lg:w-[22rem] lg:max-w-none lg:shrink-0 lg:shadow-none"
+          [request]="dictRequest()"
+          [canSelect]="book()?.ebookFormat === 'EPUB'"
+          (closed)="closeDictionary()"
+        />
+      }
       </div>
 
       <!-- Pie de progreso: lo que queda del capítulo, barra y porcentaje en una sola línea -->
@@ -372,7 +398,9 @@ export class ReaderPage {
     const target = event.target as HTMLElement | null;
     if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
     if (event.key === 'Escape') {
-      if (this.tocOpen()) {
+      if (this.dictOpen()) {
+        this.closeDictionary();
+      } else if (this.tocOpen()) {
         this.tocOpen.set(false);
       } else {
         void this.router.navigate(['/books', this.id()]);
@@ -386,6 +414,32 @@ export class ReaderPage {
       if (event.key === 'ArrowRight') this.epub()?.next();
       if (event.key === 'ArrowLeft') this.epub()?.prev();
     }
+  }
+
+  // --- diccionario ---
+
+  protected readonly dictOpen = signal(false);
+  protected readonly dictRequest = signal<DictionaryRequest | null>(null);
+  private dictSeq = 0;
+
+  /** Palabra seleccionada en el libro: abre el panel y la busca. */
+  protected lookupWord(word: string): void {
+    this.dictRequest.set({ word, id: ++this.dictSeq });
+    this.dictOpen.set(true);
+  }
+
+  protected toggleDictionary(): void {
+    if (this.dictOpen()) {
+      this.closeDictionary();
+    } else {
+      this.dictOpen.set(true);
+    }
+  }
+
+  protected closeDictionary(): void {
+    this.dictOpen.set(false);
+    // Sin esto, al reabrirlo a mano volvería a buscar la última palabra
+    this.dictRequest.set(null);
   }
 
   /** Pasa página hacia atrás (−1) o hacia delante (+1) en cualquiera de los dos formatos. */

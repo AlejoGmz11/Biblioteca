@@ -32,6 +32,13 @@ app:
   password-reset:
     token-expiration-minutes: 30
     from: ${MAIL_FROM:MyLibrary <no-reply@mylibrary.local>}
+  # Diccionario del lector: servicio de definiciones en español (la API pública
+  # rae-api.com, no oficial) con caché propia en la tabla dictionary_cache
+  dictionary:
+    url: ${DICTIONARY_URL:https://rae-api.com/api/words}
+    cache-days: 90
+    miss-cache-days: 7
+    timeout-seconds: 5
   ebook:
     max-size-mb: 100
     storage:
